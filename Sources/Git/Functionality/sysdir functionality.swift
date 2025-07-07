@@ -14,13 +14,13 @@ import Foundation
 
 
 
-private let git_sysdir__dirs: [SysDir.Dir] = [
-    .init(git_sysdir_guess_system_dirs),
-    .init(git_sysdir_guess_global_dirs),
-    .init(git_sysdir_guess_xdg_dirs),
-    .init(git_sysdir_guess_programdata_dirs),
-    .init(git_sysdir_guess_template_dirs),
-    .init(git_sysdir_guess_home_dirs),
+private let git_sysdir__dirs: [SysDir : SysDir.Dir] = [
+    .system : .init(git_sysdir_guess_system_dirs),
+    .global : .init(git_sysdir_guess_global_dirs),
+    .xdg : .init(git_sysdir_guess_xdg_dirs),
+    .programdata : .init(git_sysdir_guess_programdata_dirs),
+    .template : .init(git_sysdir_guess_template_dirs),
+    .home : .init(git_sysdir_guess_home_dirs),
 ]
 
 
@@ -48,13 +48,13 @@ public extension SysDir {
 /**
  * Get the search path for global/system/xdg files
  *
- * - Returns: git_str containing search path
+ * - Returns: A `String` array containing search path
  * - Parameter which: which list of paths to return
  * - Throws: nothing on success, a ``GitError`` with a code on failure
  */
-public func git_sysdir_get(which: SysDir) throws(GitError) -> String? {
+public func git_sysdir_get(which: SysDir) throws(GitError) -> [String] {
     try GIT_ERROR_CHECK_ERROR(try git_sysdir_check_selector(which: which))
-    return git_sysdir__dirs[which].buf
+    return git_sysdir__dirs[which].directory
 }
 
 
@@ -84,8 +84,19 @@ func git_sysdir_guess_system_dirs() throws(GitError) -> String? {
 #if GIT_WIN32
     return git_win32__find_system_dirs("etc")
 #else
-    return git_str_sets("/etc")
+    return "/etc"
 #endif
+    
+    // The above code translates this original C code:
+    //
+    // static int git_sysdir_guess_system_dirs(git_str *out)
+    // {
+    // #ifdef GIT_WIN32
+    //     return git_win32__find_system_dirs(out, "etc");
+    // #else
+    //     return git_str_sets(out, "/etc");
+    // #endif
+    // }
 }
 
 
@@ -93,23 +104,43 @@ func git_sysdir_guess_system_dirs() throws(GitError) -> String? {
 
 func git_sysdir_find_in_dirlist(
     path: String,
-    name: String,
+    name: String?,
     which: SysDir,
     label: String)
+throws(GitError)
+-> String
 {
     let len: size_t
     let scan: String
-    var next: String? = nil
-    let syspath: String
+    var next: String.Element? = nil
+    var syspath: [String]?
     
-    GIT_ERROR_CHECK_ERROR(git_sysdir_get(&syspath, which));
-    if (!syspath || !git_str_len(syspath))
-        goto done;
+    func done() throws(GitError) -> Never {
+        if let name {
+            throw .init(message: "the \(label) file '\(name)' doesn't exist", kind: .os, code: .objectNotFound)
+        }
+        else {
+            throw .init(message: "the \(label) directory doesn't exist", kind: .os, code: .objectNotFound)
+        }
+    }
     
-    for (scan = git_str_cstr(syspath); scan; scan = next) {
+    do {
+        syspath = try GIT_ERROR_CHECK_ERROR(try git_sysdir_get(which: which))
+        guard let syspath,
+              !syspath.isEmpty
+        else {
+            throw GitError.init(code: .__generic)
+        }
+    }
+    catch {
+        try done()
+    }
+    
+    
+    while let scan = syspath?.removeFirst() {
         /* find unescaped separator or end of string */
-        for (next = scan; *next; ++next) {
-            if (*next == GIT_PATH_LIST_SEPARATOR &&
+        for character in scan {
+            if (character == GIT_PATH_LIST_SEPARATOR &&
                  (next <= scan || next[-1] != '\\'))
                 break;
         }
@@ -119,21 +150,69 @@ func git_sysdir_find_in_dirlist(
         if (!len)
             continue;
         
-        GIT_ERROR_CHECK_ERROR(git_str_set(path, scan, len));
-        if (name)
-            GIT_ERROR_CHECK_ERROR(git_str_joinpath(path, path->ptr, name));
+        defer {
+            //        try git_str_set(buffer: &path, source: scan, length: scan.count)
+            if let name {
+                try GIT_ERROR_CHECK_ERROR(git_str_joinpath(path, path->ptr, name));
+            }
+            
+            if git_fs_path_exists(path->ptr) {
+                return
+            }
+        }
         
-        if (git_fs_path_exists(path->ptr))
-            return 0;
+        return scan
     }
     
-done:
-    if (name)
-        git_error_set(GIT_ERROR_OS, "the %s file '%s' doesn't exist", label, name);
-    else
-        git_error_set(GIT_ERROR_OS, "the %s directory doesn't exist", label);
-    git_str_dispose(path);
-    return GIT_ENOTFOUND;
+    return try done()
+    
+    
+    
+    // The above code translates this original C code:
+    //
+    // static int git_sysdir_find_in_dirlist(
+    //     git_str *path,
+    //     const char *name,
+    //     git_sysdir_t which,
+    //     const char *label)
+    // {
+    //     size_t len;
+    //     const char *scan, *next = NULL;
+    //     const git_str *syspath;
+    // 
+    //     GIT_ERROR_CHECK_ERROR(git_sysdir_get(&syspath, which));
+    //     if (!syspath || !git_str_len(syspath))
+    //         goto done;
+    // 
+    //     for (scan = git_str_cstr(syspath); scan; scan = next) {
+    //         /* find unescaped separator or end of string */
+    //         for (next = scan; *next; ++next) {
+    //             if (*next == GIT_PATH_LIST_SEPARATOR &&
+    //                  (next <= scan || next[-1] != '\\'))
+    //                 break;
+    //         }
+    // 
+    //         len = (size_t)(next - scan);
+    //         next = (*next ? next + 1 : NULL);
+    //         if (!len)
+    //             continue;
+    // 
+    //         GIT_ERROR_CHECK_ERROR(git_str_set(path, scan, len));
+    //         if (name)
+    //             GIT_ERROR_CHECK_ERROR(git_str_joinpath(path, path->ptr, name));
+    // 
+    //         if (git_fs_path_exists(path->ptr))
+    //             return 0;
+    //     }
+    // 
+    // done:
+    //     if (name)
+    //         git_error_set(GIT_ERROR_OS, "the %s file '%s' doesn't exist", label, name);
+    //     else
+    //         git_error_set(GIT_ERROR_OS, "the %s directory doesn't exist", label);
+    //     git_str_dispose(path);
+    //     return GIT_ENOTFOUND;
+    // }
 }
 
 

@@ -20,11 +20,29 @@ public func git_str_dispose(string: inout String?) {
 
 
 
-private func ENSURE_SIZE(b: String, d: size_t) throws(GitError) {
-    if b == git_str__oom
-        || (d > b.count) {
-        try git_str_grow(b, d)
+@inline(__always)
+private func ENSURE_SIZE(string: inout String, targetSize: size_t) throws(GitError) {
+    if git_str__oom == string
+        || (targetSize > string.count) {
+        do {
+            try string.git_str_grow(target_size: targetSize)
+        }
+        catch where error.code != nil
+                && error.kind == nil
+        {
+            throw .init(code: .__generic)
+        }
+        catch {
+            return
+        }
     }
+    
+    // The above code translates this original C code:
+    //
+    // #define ENSURE_SIZE(b, d) \
+    //     if ((b)->ptr == git_str__oom || \
+    //         ((d) > (b)->asize && git_str_grow((b), (d)) < 0))\
+    //         return -1;
 }
 
 
@@ -84,9 +102,9 @@ public extension String {
     /// - Throws: A ``GitError`` iff `newString` is `nil`
     // Analogous to `git_str_puts`
     init?(checking cString: UnsafeMutablePointer<CChar>?, expressionLabel: String = #function) throws(GitError) {
-        var cString = try assert(expr: cString, expressionLabel: expressionLabel)
-        self.init(validatingCString: cString)
+        self.init(validatingCString: try assert(expr: cString, expressionLabel: expressionLabel))
     }
+    
     
     /**
      * Join two strings as paths, inserting a slash between as needed.
@@ -101,6 +119,7 @@ public extension String {
         //
         // return git_str_join(str, '/', a, b);
     }
+    
     
     /** General join with separator */
     // Analogous to `git_str_join`
@@ -206,13 +225,11 @@ public extension String {
      * If the allocation fails, this will return an error and the buffer will be
      * marked as invalid for future operations, invaliding the contents.
      *
-     * @param str The buffer to be resized; may or may not be allocated yet
-     * @param target_size The desired available size
-     * @return 0 on success, -1 on allocation failure
+     * - Parameter target_size: The desired available size
+     * - Throws: on allocation failure
      */
-    mutating func git_str_grow(target_size: size_t) throws(GitError)
-    {
-        try self.git_str_try_grow(target_size: target_size, mark_oom: true)
+    mutating func git_str_grow(target_size: size_t) throws(GitError) {
+        try git_str_try_grow(target_size: target_size)
     }
     
     
@@ -269,29 +286,50 @@ public extension String {
 
 
 
-func git_str_sets(_ string: String) -> String {
-    return git_str_set(string, string?.count ?? 0)
+func git_str_sets(buf: inout String, string: String?) throws(GitError) {
+    try git_str_set(buffer: &buf, source: string, length: string?.count ?? 0)
 }
 
 
-func git_str_set(buffer buf: inout String?, source data: String?, length len: size_t) {
+func git_str_set(buffer buf: inout String, source data: String?, length len: size_t) throws(GitError) {
     var alloclen: size_t
     
-    if (len == 0 || data == nil) {
-        buf?.removeAll(keepingCapacity: true)
-    } else {
-        if (data != buf) {
-            (alloclen, _) = len.addingReportingOverflow(1)
-            ENSURE_SIZE(buf, alloclen);
-            buf = data // memmove(buf, data, len);
-        }
-
-        buf->size = len;
-        if (buf->asize > buf->size)
-            buf->ptr[buf->size] = '\0';
-
+    guard let data, len != 0 else {
+        buf.removeAll(keepingCapacity: true)
+        return
     }
-    return 0;
+    
+    if data != buf {
+        (alloclen, _) = len.addingReportingOverflow(1)
+        try ENSURE_SIZE(string: &buf, targetSize: alloclen)
+        buf = data // memmove(buf, data, len);
+    }
+    
+    return
+    
+    
+    // The above code translates this original C code:
+    //
+    // int git_str_set(git_str *buf, const void *data, size_t len)
+    // {
+    //     size_t alloclen;
+    //
+    //     if (len == 0 || data == NULL) {
+    //         git_str_clear(buf);
+    //     } else {
+    //         if (data != buf->ptr) {
+    //             GIT_ERROR_CHECK_ALLOC_ADD(&alloclen, len, 1);
+    //             ENSURE_SIZE(buf, alloclen);
+    //             memmove(buf->ptr, data, len);
+    //         }
+    //
+    //         buf->size = len;
+    //         if (buf->asize > buf->size)
+    //             buf->ptr[buf->size] = '\0';
+    //
+    //     }
+    //     return 0;
+    // }
 }
 
 
@@ -327,4 +365,12 @@ public func git_str_len(_: inout git_str?) -> size_t { fatalError() }
 public extension String {
     @available(*, unavailable, message: "This is identical to Swift = assignment if the new string isn't Optional")
     init(checking _: String, expressionLabel _: String = #function) throws(GitError) { fatalError() }
+    
+    
+    @available(*, unavailable, renamed: "git_str_try_grow(target_size:)")
+    func git_str_try_grow(target_size: size_t, mark_oom: Bool) { fatalError() }
 }
+
+
+@available(*, unavailable, renamed: "buf.git_str_try_grow(target_size:)")
+public func git_str_try_grow(buf: inout git_str, target_size: size_t, mark_oom: Bool) { fatalError() }

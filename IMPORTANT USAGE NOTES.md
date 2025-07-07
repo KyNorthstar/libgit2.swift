@@ -130,6 +130,16 @@ That also means that libtit2.swift can handle some edge cases libgit2 can't, sin
 
 
 
+### Nullability
+
+With the exception of a handful of `// comments`, libgit2 makes no use of any form of nullability marking. As such, libgit2.swift makes deliberate choices about what is and what isn't presented as `Optional`.
+
+This might be opinionated at times, but most often is driven by how the translated functions work, whether the original code checks for nullability, whether nullability is useful/neccessary, whether a function would crash/assert if given a null value, etc.
+
+This might result in the nullability of fields/parameters/etc. changing in future releases. Lo siento.
+
+
+
 ### Hash algorithms
 
 libgit2 uses SHA-1 as the default hash algorithm, and chooses various backends to perform hashing operations with, depending on the platform. 

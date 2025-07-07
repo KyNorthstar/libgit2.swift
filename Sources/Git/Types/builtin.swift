@@ -10,10 +10,8 @@
 
 import Foundation
 
-#if GIT_SHA256_BUILTIN
 
-struct git_hash_sha256_ctx {
+
+struct git_hash_sha256_ctx: AnyStructProtocol {
     var c: SHA256Context
 }
-
-#endif

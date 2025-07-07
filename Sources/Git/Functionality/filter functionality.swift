@@ -527,7 +527,7 @@ GIT_EXTERN(int) git_filter_unregister(const char *name);
 
 
 
-public struct git_filter_session {
+public struct git_filter_session: AnyStructProtocol {
     public var options: Filter.Options
     public var attr_session: git_attr_session?
     public var temp_buf: String? = nil
@@ -1082,7 +1082,9 @@ throws(GitError) -> String?
             do {
                 attr_opts.attr_commit_id = try src.options?.attributeLodingCommitId?.copy()
             }
-            catch {}
+            catch {
+                // Ignore errors
+            }
         }
     }
 

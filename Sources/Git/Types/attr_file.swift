@@ -63,7 +63,7 @@ public struct git_attr_rule: AnyStructProtocol {
 
 
 
-public struct git_attr_name {
+public struct git_attr_name: AnyStructProtocol {
     var unused: RefCount
     let name: String
     var name_hash: UInt32
@@ -110,6 +110,68 @@ public struct git_attr_path: AnyStructProtocol {
     public var basename: String?
     public var is_dir: Bool
 }
+
+
+
+public func git_attr_path__init(
+//    info: inout git_attr_path,
+    path: String,
+    base: String,
+    isDir is_dir: git_dir_flag)
+throws(GitError) -> git_attr_path
+{
+    var root: ssize_t
+    var info = git_attr_path(is_dir: .init(is_dir))
+    
+    /* build full path as best we can */
+    
+    if (git_fs_path_join_unrooted(&info.full, path, base, &root) < 0){
+        throw .init(code: .generic)
+    }
+
+    info->path = info->full.ptr + root;
+
+    /* remove trailing slashes */
+    while (info->full.size > 0) {
+        if (info->full.ptr[info->full.size - 1] != "/")
+            break;
+        info->full.size--;
+    }
+    info->full.ptr[info->full.size] = nil;
+
+    /* skip leading slashes in path */
+    while (*info->path == "/")
+        info->path++;
+
+    /* find trailing basename component */
+    info->basename = strrchr(info->path, "/");
+    if (info->basename)
+        info->basename++;
+    if (!info->basename || !*info->basename)
+        info->basename = info->path;
+
+    switch (dir_flag)
+    {
+    case GIT_DIR_FLAG_FALSE:
+        info->is_dir = 0;
+        break;
+
+    case GIT_DIR_FLAG_TRUE:
+        info->is_dir = 1;
+        break;
+
+    case GIT_DIR_FLAG_UNKNOWN:
+    default:
+        info->is_dir = (int)git_fs_path_isdir(info->full.ptr);
+        break;
+    }
+
+    return 0;
+}
+
+
+extern void git_attr_path__free(git_attr_path *info);
+
 
 
 

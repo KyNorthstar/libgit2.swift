@@ -9,7 +9,7 @@ import Foundation
 
 
 
-public enum SysDir: CInt {
+public enum SysDir: CInt, AnyEnumProtocol {
     case system      = 0
     case global      = 1
     case xdg         = 2

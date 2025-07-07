@@ -114,7 +114,7 @@ public extension Runtime {
 
 public extension Runtime {
     @globalActor
-    final actor InitLock: GlobalActor {
+    final actor InitLock: GlobalActor, AnyActorProtocol {
         public static let shared = ActorType()
         
         public typealias ActorType = InitLock

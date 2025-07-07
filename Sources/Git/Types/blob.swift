@@ -13,7 +13,7 @@ import Either
 
 
 
-public struct git_blob {
+public struct git_blob: AnyStructProtocol {
     public var object: Object
     public var data: Either<git_odb_object, Raw>
     public var raw: CUnsignedInt = 1

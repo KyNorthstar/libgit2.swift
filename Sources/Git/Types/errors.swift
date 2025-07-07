@@ -54,7 +54,7 @@ public extension GitError {
     }
     
     
-    @available(*, deprecated, message: "Please use a semantic error instead...")
+//    @available(*, deprecated, message: "Please use a semantic error instead...")
     static var generic: Self { .init() }
 }
 

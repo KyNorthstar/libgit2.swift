@@ -44,13 +44,17 @@ throws(GitError) -> [String]?
     try assert(expr: names)
     try GIT_ERROR_CHECK_VERSION(structure: opts, expectedMax: GIT_ATTR_OPTIONS_VERSION, name: "git_attr_options")
 
-    if git_repository_is_bare(repo) {
-        dir_flag = GIT_DIR_FLAG_FALSE
+    if repo.isBare {
+        dir_flag = .GIT_DIR_FLAG_FALSE
     }
     
-    if (git_attr_path__init(&path, pathname, git_repository_workdir(repo), dir_flag) < 0)
-        return -1;
-
+    do {
+        path = try git_attr_path__init(path: pathname, base: git_repository_workdir(repo), isDir: dir_flag)
+    }
+    catch {
+        throw GitError.generic
+    }
+    
     if ((error = collect_attr_files(repo, attr_session, opts, pathname, &files)) < 0)
         return try cleanup()
 
@@ -95,16 +99,36 @@ throws(GitError) -> [String]?
 
 
 public func git_attr_path__free(info: inout git_attr_path?) {
-    info.full = nil
-    info.path = nil
-    info.basename = nil
+    info?.full = nil
+    info?.path = nil
+    info?.basename = nil
+}
+
+
+
+// MARK: - package conveniences
+
+internal extension Bool {
+    init(_ gitDirFlag: git_dir_flag) {
+        switch gitDirFlag {
+        case .GIT_DIR_FLAG_TRUE:
+            self = true
+        case .GIT_DIR_FLAG_FALSE:
+            self = false
+        case .GIT_DIR_FLAG_UNKNOWN:
+            let message = "Unknown git flag used! Defaulting to `false`"
+            assertionFailure(message)
+            print(message)
+            self = false
+        }
+    }
 }
 
 
 
 // MARK: - Private to `attr.c`
 
-private struct attr_get_many_info {
+private struct attr_get_many_info: AnyStructProtocol {
     var name: git_attr_name
     var found: git_attr_assignment
 }

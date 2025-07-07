@@ -12,7 +12,7 @@ import Foundation
 
 
 
-public struct GitHash<Context: ShaContext> {
+public struct GitHash<Context: ShaContext>: AnyStructProtocol {
     var context: HashContext<Context>
 }
 

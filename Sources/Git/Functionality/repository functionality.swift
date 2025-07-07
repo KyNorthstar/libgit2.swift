@@ -143,7 +143,6 @@ public extension Repository {
 @inline(__always)
 private func config_path_system(backup: String? = nil, use_env: Bool) throws(GitError) -> String? {
     
-    var out = backup
     
     if (use_env) {
         var no_system: Bool
@@ -159,27 +158,24 @@ private func config_path_system(backup: String? = nil, use_env: Bool) throws(Git
         }
         
         if no_system {
-            return out
+            return backup
         }
         
         do {
-            out = try _getEnv(name: "GIT_CONFIG_SYSTEM")
-            // error == 0
-            return out
+            return try _getEnv(name: "GIT_CONFIG_SYSTEM")
         }
         catch {
             guard error.code == .objectNotFound else {
                 // error != GIT_ENOTFOUND
-                return out
+                return backup
             }
         }
         catch {
-            
+            // Ignore other errors
         }
     }
-
+    var out: String
     try git_config__find_system(path: out)
-    return 0;
     
     // The above code translates this original C code:
     //
@@ -213,18 +209,28 @@ private func config_path_system(backup: String? = nil, use_env: Bool) throws(Git
 }
 
 
-/**
- * Check if a repository is a linked work tree
- *
- * @param repo Repo to test
- * @return 1 if the repository is a linked work tree, 0 otherwise.
- */
+/// Check if the given repository is a linked work tree
+///
+/// - Parameter repo: Repo to test
+/// - Returns: `true` if the repository is a linked work tree, `false` otherwise
+@available(*, deprecated, renamed: "repo.isWorktree", message: "The original version of this just accessed `repo.isWorktree` after checking whether `repo` was null. Swift has robust nilness checking, so that is unnecessary.")
+@inline(__always)
 public func git_repository_is_worktree(repo: Repository) -> Bool {
-    TODO
+    repo.isWorktree
 }
 
 
+public func git_config__find_system(path: String) throws(GitError) {
+    try git_sysdir_find_system_file(path: path, filename: GIT_CONFIG_FILENAME_SYSTEM)
+}
 
-public func git_config__find_system(path: String?) throws(GitError) {
-    git_sysdir_find_system_file(path, GIT_CONFIG_FILENAME_SYSTEM)
+
+/// Check if the given repository is bare
+///
+/// - Parameter repo: Repo to test
+/// - Returns: `true` if the repository is bare, `false` otherwise
+@available(*, deprecated, renamed: "repo.isBare", message: "The original version of this just accessed `repo.isBare` after checking whether `repo` was null. Swift has robust nilness checking, so that is unnecessary.")
+@inline(__always)
+public func git_repository_is_bare(repo: Repository) -> Bool {
+    repo.isBare
 }
