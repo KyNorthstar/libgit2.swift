@@ -94,7 +94,7 @@ internal func GIT_ASSERT_WITH_RETVAL<T>(expr: T?, expressionLabel: String = #fun
  * Assert that a consumer-provided argument is valid, setting an
  * actionable error message and returning the `fail` param if not.
  */
-@available(*, deprecated, renamed: "??", message: "Since libgit2.swift uses native erros instead of a side error channel, this doesn't do anything special. The `??` might be more appropriate")
+@available(*, deprecated, message: "Since libgit2.swift uses native erros instead of a side error channel, this doesn't do anything special. `guard let` might be more appropriate")
 internal func GIT_ASSERT_ARG_WITH_RETVAL<T>(expr: T?, expressionLabel: String = #function, backup: @autoclosure () -> T) -> T {
     GIT_ASSERT__WITH_RETVAL(
         expr: expr,
@@ -104,7 +104,7 @@ internal func GIT_ASSERT_ARG_WITH_RETVAL<T>(expr: T?, expressionLabel: String = 
         backup: backup())
 }
 
-@available(*, deprecated, renamed: "??", message: "Since libgit2.swift uses native erros instead of a side error channel, this doesn't do anything special. The `??` might be more appropriate")
+@available(*, deprecated, message: "Since libgit2.swift uses native erros instead of a side error channel, this doesn't do anything special. `guard let` might be more appropriate")
 internal func GIT_ASSERT__WITH_RETVAL<T>(
     expr: T?,
     expressionLabel: String = #function,

@@ -9,6 +9,10 @@ import Foundation
 
 
 
+public let GIT_ATTR_FILE          = ".gitattributes"
+
+
+
 public func git_attr_get_many_with_session(
     repo: Repository,
     attr_session: git_attr_session,
@@ -18,7 +22,7 @@ public func git_attr_get_many_with_session(
     names: [String])
 throws(GitError) -> [String]?
 {
-    var error: GitError?
+    var caughtError: GitError?
     var path: git_attr_path?
     var files = SelfSortingArray<AnyTypeProtocol>()
     var i, j, k: size_t
@@ -28,11 +32,11 @@ throws(GitError) -> [String]?
     var num_found: size_t = 0
     var dir_flag: git_dir_flag = .GIT_DIR_FLAG_UNKNOWN
     
-    func cleanup() throws {
+    func cleanup() throws(GitError) -> [String]? {
         path = nil
         info = nil
         
-        if let error { throw error }
+        if let caughtError { throw caughtError }
     }
 
     guard 0 != num_attr else {
@@ -49,14 +53,21 @@ throws(GitError) -> [String]?
     }
     
     do {
-        path = try git_attr_path__init(path: pathname, base: git_repository_workdir(repo), isDir: dir_flag)
+        if let nonBareWorkdir = repo.nonBareWorkdir {
+            path = try git_attr_path__init(path: pathname, base: nonBareWorkdir, isDir: dir_flag)
+        }
     }
     catch {
         throw GitError.generic
     }
     
-    if ((error = collect_attr_files(repo, attr_session, opts, pathname, &files)) < 0)
+    do {
+        collect_attr_files(repo, attr_session, opts, pathname, &files)
+    }
+    catch where nil != error.code && nil == error.kind {
+        caughtError = error
         return try cleanup()
+    }
 
     info = git__calloc(num_attr, sizeof(attr_get_many_info));
     GIT_ERROR_CHECK_ALLOC(info);

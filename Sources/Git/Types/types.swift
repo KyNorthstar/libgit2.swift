@@ -52,7 +52,7 @@ public struct git_signature: AnyStructProtocol {
 
 
 /** A type to write in a streaming fashion, for example, for filters. */
-public protocol Writestream: AnyTypeProtocol, ~Copyable {
+public protocol Writestream: ~Copyable {
     mutating func write(data: String) throws(GitError) -> Void
     mutating func close() throws(GitError) -> Void
     
@@ -95,10 +95,10 @@ public extension Writestream {
 // MARK: - Consistency
 
 /// All types in this repo should conform to this by default
-public typealias AnyTypeProtocol = Sendable
+public typealias AnyTypeProtocol = Copyable
 
 /// All value types (e.g. `struct`s, `enum`s, etc.) in this repo should conform to this by default
-public typealias AnyValueTypeProtocol = AnyTypeProtocol
+public typealias AnyValueTypeProtocol = AnyTypeProtocol & Sendable
 
 /// All `struct`s in this repo should conform to this by default
 public typealias AnyStructProtocol = AnyValueTypeProtocol
@@ -113,7 +113,7 @@ public typealias AnyRefProtocol = AnyTypeProtocol & AnyObject
 public typealias AnyClassProtocol = AnyRefProtocol
 
 /// All `actor`s in this repo should conform to this by default
-public typealias AnyActorProtocol = AnyRefProtocol
+public typealias AnyActorProtocol = AnyRefProtocol & Actor
 
 
 

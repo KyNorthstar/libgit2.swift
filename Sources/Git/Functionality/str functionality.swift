@@ -10,6 +10,7 @@
 
 import Foundation
 
+/// Git's string out-of-memory mark
 public let git_str__oom = "\u{0}"
 
 @available(*, deprecated, renamed: "nil", message: "You should only have to nilify the String and the Swift runtime will take care of the rest.")
@@ -20,15 +21,22 @@ public func git_str_dispose(string: inout String?) {
 
 
 
+/// Resizes the given string to the given target size, or throws an error if that can't be done (e.g. low memory).
+///
+/// - Parameters:
+///   - string:     The string to resize
+///   - targetSize: The desired size of the new string
+/// - Throws: Any error thrown during resizing, if it has no kind but _does_ have a code. If any other error is thrown during resizing, it's ignored. That was the original behavior.
 @inline(__always)
-private func ENSURE_SIZE(string: inout String, targetSize: size_t) throws(GitError) {
+private func ENSURE_SIZE(string: inout String, targetSize: Int) throws(GitError) {
     if git_str__oom == string
-        || (targetSize > string.count) {
+        || (targetSize > string.count)
+    {
         do {
-            try string.git_str_grow(target_size: targetSize)
+            try string.resize(to: targetSize)
         }
         catch where error.code != nil
-                && error.kind == nil
+                 && error.kind == nil
         {
             throw .init(code: .__generic)
         }
@@ -228,18 +236,25 @@ public extension String {
      * - Parameter target_size: The desired available size
      * - Throws: on allocation failure
      */
-    mutating func git_str_grow(target_size: size_t) throws(GitError) {
-        try git_str_try_grow(target_size: target_size)
+    mutating func resize(to target_size: Int) throws(GitError) {
+        try resize(to: target_size)
     }
     
     
     /// Attempt to grow this string's internal buffer to allow it to hold at least `target_size` characters.
-    ///
+    ///  
     /// Note that the string's `.count` will remain the same after this returns; the only change will be guaranteeing that enough free memory exists to contain `target_size` characters.
-    ///
+    /// 
+    /// Currently, this will never shrink a buffer, only expand it.
+    /// 
+    /// - Attention: This is a niche utility. You're encouraged to use `.reserveCapacity` instead. If this function fails to allocate the memory needed to create a string of the given size, this will return an error and the buffer will be marked as invalid for future operations, invaliding its contents entirely.
+    /// 
     /// - Parameters:
-    ///   - target_size: The minimum number of characters this string should be able to hold
-    mutating func git_str_try_grow(target_size: size_t) throws(GitError) {
+    ///   - target_size:               The minimum number of characters this string should be able to hold
+    ///   - markAsOutOfMemoryIfFailed: _optional_ - When `true`, then if this ever fails to reserve the capacity you request, it sets this string to the Out-Of-Memory string and throws an error.
+    ///                                Otherwise, when `false`, this won't change the string but would still throw an error.
+    ///                                Defaults to `false`.
+    mutating func resize(to target_size: size_t, markAsOutOfMemoryIfFailed: Bool = false) throws(GitError) {
         
         let target_size = target_size.nonZeroOrNil ?? self.count
         
@@ -248,7 +263,7 @@ public extension String {
         }
         
         guard git_str__oom != self else {
-            throw .init(code: .__generic)
+            throw .generic
         }
         
         self.reserveCapacity(target_size)
@@ -262,7 +277,7 @@ public extension String {
         //    - This does that
         //
         // - If the buffer's `asize` and `size` are both `0`, then it assumes the buffer was borrowed and throws GIT_EINVALID
-        //    - Since this version mutates the current string, that string cannot be borrowed into this function
+        //    - Since this version mutates the current string, and the Swift `String` type is `Copyable`, that string cannot be borrowed into this function
         //
         // - If the target size is less than or equal to the current size, do nothing
         //    - This does that
@@ -273,10 +288,10 @@ public extension String {
         // - Allocating at least X bytes to avoid memory holes
         //    - This is taken care of in Swift's `String` already
         //
-        // - If the newly-calculated size is less than the current size, then an out-of-memory error is thrown
+        // - If the newly-allocated size is less than the current size, then an out-of-memory error is thrown
         //    - Since Swift doesn't really concern itself with that, this version doesn't either
         //
-        // - Checking if reallication resulted in a null pointer, then throwing an out-of-memory error
+        // - Checking if reallocation resulted in a null pointer, then throwing an out-of-memory error
         //    - Since Swift doesn't really concern itself with that, this version doesn't either
         //
         //
@@ -372,5 +387,8 @@ public extension String {
 }
 
 
-@available(*, unavailable, renamed: "buf.git_str_try_grow(target_size:)")
-public func git_str_try_grow(buf: inout git_str, target_size: size_t, mark_oom: Bool) { fatalError() }
+@available(*, unavailable, renamed: "buf.resize(to:)")
+public func git_str_try_grow(_ buf: inout git_str, _ target_size: size_t, _ mark_oom: Bool) { fatalError() }
+
+@available(*, unavailable, renamed: "buf.resize(to:)")
+public func git_str_grow(_ buf: inout git_str, _: size_t) -> CInt { fatalError() }

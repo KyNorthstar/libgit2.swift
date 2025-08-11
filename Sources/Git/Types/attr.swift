@@ -85,3 +85,14 @@ public enum git_attr_check: CUnsignedInt, AnyEnumProtocol, AutoOptionSet {
     case GIT_ATTR_CHECK_INCLUDE_HEAD   = 0b01000 // (1 << 3)
     case GIT_ATTR_CHECK_INCLUDE_COMMIT = 0b10000 // (1 << 4)
 }
+
+
+
+public struct attr_walk_up_info {
+    var repo: Repository?
+    var attr_session: git_attr_session?
+    var opts: git_attr_options?
+    var workdir: String?
+    var index: Index?
+    var files: SelfSortingArray<TODO>?
+}

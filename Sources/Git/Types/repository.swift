@@ -27,7 +27,7 @@ public struct Repository: AnyStructProtocol {
     public var gitlink: String
     public var gitdir: String
     public var commondir: String
-    public var workdir: String
+    public var rawWorkdir: String
     public var namespace: String
     
     public var ident_name: String

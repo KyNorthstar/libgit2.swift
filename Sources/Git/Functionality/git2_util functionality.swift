@@ -48,7 +48,7 @@ public extension FixedWidthInteger {
 
 
 @inline(__always)
-func git__add_sizet_overflow<I: FixedWidthInteger>(out: inout I, one: I, two: I) -> Bool {
+public func git__add_sizet_overflow<I: FixedWidthInteger>(out: inout I, one: I, two: I) -> Bool {
     let (result, problem) = one.addingReportingOverflow(two)
     out = result
     return problem
@@ -57,7 +57,7 @@ func git__add_sizet_overflow<I: FixedWidthInteger>(out: inout I, one: I, two: I)
 
 /** Check for additive overflow, setting an error if would occur. */
 @inline(__always)
-func GIT_ADD_SIZET_OVERFLOW<I: FixedWidthInteger>(out: inout I, one: I, two: I) throws(GitError) {
+public func GIT_ADD_SIZET_OVERFLOW<I: FixedWidthInteger>(out: inout I, one: I, two: I) throws(GitError) {
     if git__add_sizet_overflow(out: &out, one: one, two: two) {
         throw .outOfMemory
     }
@@ -66,10 +66,15 @@ func GIT_ADD_SIZET_OVERFLOW<I: FixedWidthInteger>(out: inout I, one: I, two: I) 
     }
 }
 
+/// Check whether the given value is `nil`, throwing `.generic` if is is
+public func GIT_ERROR_CHECK_ALLOC<T>(_ ptr: T?) throws(GitError) {
+    guard nil != ptr else { throw .generic }
+}
+
 
 /** Check for additive overflow, failing if it would occur. */
 @inline(__always)
-func GIT_ERROR_CHECK_ALLOC_ADD<I: FixedWidthInteger>(out: inout I, one: I, two: I) throws(GitError) {
+public func GIT_ERROR_CHECK_ALLOC_ADD<I: FixedWidthInteger>(out: inout I, one: I, two: I) throws(GitError) {
     do {
         try GIT_ADD_SIZET_OVERFLOW(out: &out, one: one, two: two)
     }

@@ -209,6 +209,59 @@ private func config_path_system(backup: String? = nil, use_env: Bool) throws(Git
 }
 
 
+/**
+ * Get a snapshot of the repository's configuration
+ *
+ * Convenience function to take a snapshot from the repository's
+ * configuration.  The contents of this snapshot will not change,
+ * even if the underlying config files are modified.
+ *
+ * The configuration file must be freed once it's no longer
+ * being used by the user.
+ *
+ * @param out Pointer to store the loaded configuration
+ * @param repo the repository
+ * @return 0, or an error code
+ */
+public func git_repository_config_snapshot(out startingValue: git_config? = nil, repo: git_repository) -> git_config
+{
+    var error: GitError?
+    var `weak`: git_config
+
+    if ((error = git_repository_config__weakptr(&weak, repo)) < 0)
+        return error;
+
+    return git_config_snapshot(out, weak);
+}
+
+
+/**
+ * Get the path of the working directory for this repository
+ *
+ * If the repository is bare, this function will always return
+ * NULL.
+ *
+ * - Parameter repo: A repository object
+ * - Return: the path to the working dir, if it exists
+ */
+@available(*, deprecated, renamed: "repo.nonBareWorkdir", message: "TODO: rename the new version.")
+public func git_repository_workdir(repo: Repository) -> String? {
+    repo.nonBareWorkdir
+}
+
+
+
+public extension Repository {
+    /// The path of the working directory for this repo, or `nil` if the repo is bare
+    var nonBareWorkdir: String? {
+        isBare ? nil : rawWorkdir
+    }
+}
+
+
+
+// MARK: - Migration
+
 /// Check if the given repository is a linked work tree
 ///
 /// - Parameter repo: Repo to test
@@ -234,3 +287,21 @@ public func git_config__find_system(path: String) throws(GitError) {
 public func git_repository_is_bare(repo: Repository) -> Bool {
     repo.isBare
 }
+
+
+@available(*, unavailable, renamed: "repo.attrcache", message: "Just access `repo.attrcache` directly.")
+public func git_repository_attr_cache(_: git_repository) -> git_attr_cache? { fatalError() }
+
+
+
+@available(*, unavailable, message: "Swift doesn't require such manual pointer juggling")
+public func git_repository_config__weakptr(_: inout git_config?, _: git_repository) throws(GitError) { fatalError() }
+
+@available(*, unavailable, message: "Swift doesn't require such manual pointer juggling.")
+public func git_repository_odb__weakptr(_: inout git_config?, _: git_repository) throws(GitError) { fatalError() }
+
+int git_repository_odb__weakptr(git_odb **out, git_repository *repo);
+int git_repository_refdb__weakptr(git_refdb **out, git_repository *repo);
+int git_repository_index__weakptr(git_index **out, git_repository *repo);
+int git_repository_grafts__weakptr(git_grafts **out, git_repository *repo);
+int git_repository_shallow_grafts__weakptr(git_grafts **out, git_repository *repo);

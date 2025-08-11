@@ -51,8 +51,46 @@ throws(GitError) -> (path: String, root_at: ssize_t)
 
 
 public enum PathRoot: AnyEnumProtocol {
-    case rooted(offset: CInt)
+    
+    /// The path has a root
+    /// - Parameter offset: The offset of the root in the path
+    case rooted(offset: RawValue)
+    
+    /// The path has no root
     case notRooted
+}
+
+
+
+extension PathRoot: RawRepresentable {
+    
+    public init(rawValue: RawValue) {
+        self = switch rawValue {
+        case 0...: .rooted(offset: rawValue)
+        default:   .notRooted
+        }
+    }
+    
+    
+    @available(*, deprecated, renamed: "rootOffset", message: "Directly using the raw value of this enum is discouraged. Use `rootOffset` to determine the root offset, or compare enum values instead.")
+    public var rawValue: RawValue {
+        switch self {
+        case .rooted(let offset): offset
+        case .notRooted:          -1
+        }
+    }
+    
+    
+    public var rootOffset: RawValue? {
+        switch self {
+        case .rooted(let offset): offset
+        case .notRooted:          nil
+        }
+    }
+    
+    
+    
+    public typealias RawValue = Int
 }
 
 
@@ -90,7 +128,7 @@ public func git_fs_path_root(_ path: String) -> PathRoot {
 //        return offset;
 #endif
 
-    if (path[path.index(path.startIndex, offsetBy: Int(offset))] == "/"){
+    if "/" == path[path.index(path.startIndex, offsetBy: Int(offset))] {
         return .rooted(offset: offset)
     }
     else {
