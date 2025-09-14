@@ -19,14 +19,14 @@ import Foundation
  * library was build, otherwise one is kept globally for the library
  */
 public struct GitError: Error, AnyStructProtocol {
-    let message: String?
-    let kind: Kind?
-    var code: Code?
-    let systemError: CInt?
-    let cause: (any Error)?
+    public let message: String?
+    public let kind: Kind?
+    public var code: Code?
+    public let systemError: CInt?
+    public let cause: (any Error)?
     
     
-    init(message: String? = nil,
+    public init(message: String? = nil,
          kind: Kind? = nil,
          code: Code? = .__generic,
          systemError: CInt? = nil,
@@ -55,7 +55,7 @@ public extension GitError {
     
     
 //    @available(*, deprecated, message: "Please use a semantic error instead...")
-    static var generic: Self { .init() }
+    static var generic: Self { .init(code: .__generic) }
 }
 
 
@@ -147,7 +147,7 @@ public extension GitError {
 
         
         /** Operation not allowed on bare repository */
-        case operaationNotAllowed_bareRepo                    =  -8
+        case operationNotAllowed_bareRepo                    =  -8
         
         /** HEAD refers to branch with no commits */
         case noCommitsOnHeadBranch                            =  -9
@@ -260,6 +260,90 @@ public extension GitError {
 
 
 
+// MARK: - Predefined errors
+
+public extension GitError {
+    
+    // MARK: Codes
+    static var objectNotFound: Self                       { .init(code: .objectNotFound) }
+    static var objectAlreadyExists: Self                  { .init(code: .objectAlreadyExists) }
+    
+    static var moreThanOneObjectMatches: Self             { .init(code: .moreThanOneObjectMatches) }
+    static var outputBufferTooShort: Self                 { .init(code: .outputBufferTooShort) }
+    static var custom: Self                               { .init(code: .custom) }
+    static var operaationNotAllowed_bareRepo: Self        { .init(code: .operationNotAllowed_bareRepo) }
+    static var noCommitsOnHeadBranch: Self                { .init(code: .noCommitsOnHeadBranch) }
+    static var mergeInProgress: Self                      { .init(code: .mergeInProgress) }
+    static var referenceDoesNotSupportFastForward: Self   { .init(code: .referenceDoesNotSupportFastForward) }
+    static var badRefspecFormat: Self                     { .init(code: .badRefspecFormat) }
+    static var conflict: Self                             { .init(code: .conflict) }
+    static var locked: Self                               { .init(code: .locked) }
+    static var MODIFIED: Self                             { .init(code: .MODIFIED) }
+    static var authenticationFailed: Self                 { .init(code: .authenticationFailed) }
+    static var invalidServerCertificate: Self             { .init(code: .invalidServerCertificate) }
+    static var patchOrMergeAlreadyApplied: Self           { .init(code: .patchOrMergeAlreadyApplied) }
+    static var peelOperationNotPossible: Self             { .init(code: .peelOperationNotPossible) }
+    static var unexpectedEof: Self                        { .init(code: .unexpectedEof) }
+    static var invalidOperationOrInput: Self              { .init(code: .invalidOperationOrInput) }
+    static var uncommittedChangesPreventOperation: Self   { .init(code: .uncommittedChangesPreventOperation) }
+    static var directoryDoesNotSupportThisOperation: Self { .init(code: .directoryDoesNotSupportThisOperation) }
+    static var mergeConflict: Self                        { .init(code: .mergeConflict) }
+
+    static var userConfiguredCallbackRefusedToAct: Self   { .init(code: .userConfiguredCallbackRefusedToAct) }
+    static var iterationComplete: Self                    { .init(code: .iterationComplete) }
+    static var __internal__retry: Self                    { .init(code: .__internal__retry) }
+    static var hashMismatch: Self                         { .init(code: .hashMismatch) }
+    static var unsavedChangesCouldNotBeOverwritten: Self  { .init(code: .unsavedChangesCouldNotBeOverwritten) }
+    static var couldNotApplyPatch: Self                   { .init(code: .couldNotApplyPatch) }
+    static var objectNotOwnedByUser: Self                 { .init(code: .objectNotOwnedByUser) }
+    static var operationTimedOut: Self                    { .init(code: .operationTimedOut) }
+    static var noChanges: Self                            { .init(code: .noChanges) }
+    static var unsupportedOperation: Self                 { .init(code: .unsupportedOperation) }
+    static var readOnly: Self                             { .init(code: .readOnly) }
+    
+    
+    // MARK: Kinds
+    
+    static var noMemory: Self   { .init(kind: .noMemory) }
+    static var os: Self         { .init(kind: .os) }
+    static var invalid: Self    { .init(kind: .invalid) }
+    static var reference: Self  { .init(kind: .reference) }
+    static var zlib: Self       { .init(kind: .zlib) }
+    static var repository: Self { .init(kind: .repository) }
+    static var config: Self     { .init(kind: .config) }
+    static var regex: Self      { .init(kind: .regex) }
+    static var odb: Self        { .init(kind: .odb) }
+    static var index: Self      { .init(kind: .index) }
+    static var object: Self     { .init(kind: .object) }
+    static var net: Self        { .init(kind: .net) }
+    static var tag: Self        { .init(kind: .tag) }
+    static var tree: Self       { .init(kind: .tree) }
+    static var indexer: Self    { .init(kind: .indexer) }
+    static var ssl: Self        { .init(kind: .ssl) }
+    static var submodule: Self  { .init(kind: .submodule) }
+    static var thread: Self     { .init(kind: .thread) }
+    static var stash: Self      { .init(kind: .stash) }
+    static var checkout: Self   { .init(kind: .checkout) }
+    static var fetchHead: Self  { .init(kind: .fetchHead) }
+    static var merge: Self      { .init(kind: .merge) }
+    static var ssh: Self        { .init(kind: .ssh) }
+    static var filter: Self     { .init(kind: .filter) }
+    static var revert: Self     { .init(kind: .revert) }
+    static var callback: Self   { .init(kind: .callback) }
+    static var cherrypick: Self { .init(kind: .cherrypick) }
+    static var describe: Self   { .init(kind: .describe) }
+    static var rebase: Self     { .init(kind: .rebase) }
+    static var filesystem: Self { .init(kind: .filesystem) }
+    static var patch: Self      { .init(kind: .patch) }
+    static var worktree: Self   { .init(kind: .worktree) }
+    static var sha: Self        { .init(kind: .sha) }
+    static var http: Self       { .init(kind: .http) }
+    static var `internal`: Self { .init(kind: .internal) }
+    static var grafts: Self     { .init(kind: .grafts) }
+}
+
+
+
 // MARK: - Migration
 
 @available(*, unavailable, renamed: "GitError")
@@ -267,6 +351,10 @@ public typealias git_error = GitError
 
 @available(*, unavailable, renamed: "GitError.ThreadState")
 public typealias error_threadstate = GitError.ThreadState
+
+
+@available(*, unavailable, message: "Side-channel error handling is not supported. Throw `GitError` instead, setting its initializer fields as needed", renamed: "GitError.init")
+public func git_error_set(_: CInt, _: CharStar, _: Any...) { fatalError() }
 
 
 // MARK: `git_error_t`
@@ -416,7 +504,7 @@ public var GIT_EBUFS: GitError.Code { .outputBufferTooShort }
 public var GIT_EUSER: GitError.Code { .custom }
 
 @available(*, unavailable, renamed: "GitError.Code.operaationNotAllowed_bareRepo")
-public var GIT_EBAREREPO: GitError.Code { .operaationNotAllowed_bareRepo }
+public var GIT_EBAREREPO: GitError.Code { .operationNotAllowed_bareRepo }
 
 @available(*, unavailable, renamed: "GitError.Code.noCommitsOnHeadBranch")
 public var GIT_EUNBORNBRANCH: GitError.Code { .noCommitsOnHeadBranch }

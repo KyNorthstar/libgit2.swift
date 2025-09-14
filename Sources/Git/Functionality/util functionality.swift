@@ -232,6 +232,98 @@ private extension GitError {
 
 
 
+public extension Collection {
+    
+    /// Performs a binary search of this collection to find the index of the given element, or where it would be in this collection
+    /// 
+    /// - Parameters:
+    ///   - needle:     The value to search for
+    ///   - comparator: _optional_ - The function which compares each value in the search. You may exclude this if the collection is filled with `Comparable` elements, but it is required otherwise.
+    ///
+    /// - Returns: A tuple containing the position where the element is or would be inserted if not found. If not found, `error` is set to `.objectNotFound`.
+    func binarySearch(for needle: Element, comparator: AnyTypeComparator<Element>) -> (position: Index, error: GitError?) {
+        guard !isEmpty else {
+            return (startIndex, .objectNotFound)
+        }
+        
+        var low = startIndex
+        var high = endIndex
+        
+        while low < high {
+            let mid = index(low, offsetBy: distance(from: low, to: high) / 2)
+            let midVal = self[mid]
+            
+            switch comparator(midVal, needle) {
+            case .orderedAscending: // midVal < needle
+                // Search right half; increase low just above mid
+                low = index(after: mid)
+                
+            case .orderedDescending: // midVal > needle
+                // Search left half; reduce high down to mid
+                high = mid
+                
+            case .orderedSame: // midVal == needle
+                // Found the value
+                return (mid, nil)
+            }
+        }
+        
+        // `while` loop only exits when low == high and the value wasn't found, so this is the insertion point
+        return (low, .objectNotFound)
+        
+        // The above code translates this original C code:
+        //
+        // int git__bsearch(
+        //     void **array,
+        //     size_t array_len,
+        //     const void *key,
+        //     int (*compare)(const void *, const void *),
+        //     size_t *position)
+        // {
+        //     size_t lim;
+        //     int cmp = -1;
+        //     void **part, **base = array;
+        //
+        //     for (lim = array_len; lim != 0; lim >>= 1) {
+        //         part = base + (lim >> 1);
+        //         cmp = (*compare)(key, *part);
+        //         if (cmp == 0) {
+        //             base = part;
+        //             break;
+        //         }
+        //         if (cmp > 0) { /* key > p; take right partition */
+        //             base = part + 1;
+        //             lim--;
+        //         } /* else take left partition */
+        //     }
+        //
+        //     if (position)
+        //         *position = (base - array);
+        //
+        //     return (cmp == 0) ? 0 : GIT_ENOTFOUND;
+        // }
+    }
+}
+
+
+
+public extension Collection where Element: Comparable & AnyTypeProtocol {
+    func binarySearch(for value: Element) -> (position: Index, error: GitError?) {
+        binarySearch(for: value) { lhs, rhs in
+            if lhs == rhs {
+                return .orderedSame
+            }
+            else if lhs < rhs {
+                return .orderedAscending
+            }
+            else {
+                return .orderedDescending
+            }
+        }
+    }
+}
+
+
 
 // MARK: - Migration
 
@@ -250,3 +342,6 @@ public func git__strntol32(_: inout __int32_t, _: CharStar, _: size_t, _: inout 
 
 @available(*, unavailable, renamed: "Bool.parse(gitNumberString:)")
 public func git__parse_bool(_: inout CInt, _: CharStar) -> CInt { fatalError() }
+
+@available(*, unavailable, renamed: "array.binarySearch(for:)", message: "Most of these parameters are unnecessary in Swift; their state is managed within the rewritten function.")
+public func git__bsearch(_: [Any], _: size_t, _: Any, _: (_: Any, _: Any) -> CInt, _: inout size_t) { fatalError() }

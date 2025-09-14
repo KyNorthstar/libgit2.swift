@@ -23,7 +23,7 @@ public typealias AnyTypeComparator<Value> = @Sendable (Value, Value) -> Comparis
 // Analogous to `git_vector`
 public struct SelfSortingArray<Element: AnyTypeProtocol>: AnyStructProtocol {
     public var comparator: AnyTypeComparator<Element>?
-    public var contents: [Element]
+    public var contents: Contents
     public var flags: Flags
     
     // Analogous to `git_vector_init`
@@ -59,6 +59,10 @@ public struct SelfSortingArray<Element: AnyTypeProtocol>: AnyStructProtocol {
         self.contents = []
         self.flags = []
     }
+    
+    
+    
+    public typealias Contents = [Element]
 }
 
 
@@ -77,10 +81,36 @@ extension SelfSortingArray: ExpressibleByArrayLiteral {
 
 
 extension SelfSortingArray: Sequence {
-    
+    public typealias Index = Contents.Index
+    public typealias Iterator = IndexingIterator<Self>
 }
 
 
+
+extension SelfSortingArray: Collection {
+    public func index(after i: Contents.Index) -> Contents.Index {
+        contents.index(after: i)
+    }
+    
+    
+    public subscript(position: Contents.Index) -> Element {
+        contents[position]
+    }
+    
+    
+    public var startIndex: Contents.Index {
+        contents.startIndex
+    }
+    
+    
+    public var endIndex: Contents.Index {
+        contents.endIndex
+    }
+}
+
+
+
+// MARK: - Supporting types
 
 public extension SelfSortingArray {
     enum Flags: CUnsignedInt, AutoOptionSet, AnyStructProtocol {
@@ -100,7 +130,7 @@ private let __Flags_max = SelfSortingArray<AnyTypeProtocol>.Flags.calculateRawVa
 
 // MARK: - Migration
 
-@available(*, unavailable, renamed: "Comparator")
+@available(*, unavailable, renamed: "AnyTypeComparator")
 public typealias git_vector_cmp = AnyTypeComparator
 
 @available(*, unavailable, renamed: "SelfSortingArray")
@@ -114,7 +144,7 @@ public extension git_vector {
     var _alloc_size: size_t { fatalError() }
     
     @available(*, unavailable, renamed: "comparator")
-    var _cmp: git_vector_cmp<Any> { fatalError() }
+    var _cmp: git_vector_cmp<Any>? { fatalError() }
     
     @available(*, unavailable, renamed: "count")
     var length: size_t { fatalError() }

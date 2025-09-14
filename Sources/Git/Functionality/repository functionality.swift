@@ -24,11 +24,11 @@ public func git_repository__configmap_lookup(repo: Repository, item: ConfigmapIt
     
     var out = value
     
-    if value == ConfigmapValue.GIT_CONFIGMAP_NOT_CACHED.rawValue {
-        let config: Config
+    if value == git_configmap_value.GIT_CONFIGMAP_NOT_CACHED.rawValue {
+        var config = repo.config
         let oldval = value
         
-        try git_repository_config__weakptr(&config, repo)
+        repo.config
         try git_config__configmap_lookup(&out, config, item)
         
         value = out
@@ -64,7 +64,24 @@ public func git_repository__configmap_lookup(repo: Repository, item: ConfigmapIt
     // }
 }
 
-void git_repository__configmap_lookup_cache_clear(git_repository *repo);
+//void git_repository__configmap_lookup_cache_clear(git_repository *repo);
+
+
+
+/**
+ * Given a relative `path`, this makes it absolute based on the
+ * repository's working directory.  This will perform validation
+ * to ensure that the path is not longer than MAX_PATH on Windows
+ * (unless `core.longpaths` is set in the repo config).
+ */
+func git_repository_workdir_path(repo: Repository, path: String) throws(GitError) -> String {
+
+    guard let workdir = repo.rawWorkdir else {
+        throw GitError(message: "repository has no working directory", kind: .repository, code: .operationNotAllowed_bareRepo)
+    }
+    
+    return try git_path_validate_str_length(repo, try String(joiningPath: workdir, withPathComponent: path))
+}
 
 
 
@@ -86,7 +103,7 @@ public extension Repository {
             }
         }
         
-        if nil == _config {
+        if nil == config {
             let system_buf = String()
             var global_buf = String()
             let xdg_buf = String()
@@ -129,7 +146,7 @@ public extension Repository {
             git_str_dispose(&programdata_buf);
         }
         
-        return repo._config
+        return repo.config
     }
     //int git_repository_odb__weakptr(git_odb **out, git_repository *repo);
     //int git_repository_refdb__weakptr(git_refdb **out, git_repository *repo);
@@ -293,15 +310,26 @@ public func git_repository_is_bare(repo: Repository) -> Bool {
 public func git_repository_attr_cache(_: git_repository) -> git_attr_cache? { fatalError() }
 
 
-
-@available(*, unavailable, message: "Swift doesn't require such manual pointer juggling")
+@available(*, unavailable, renamed: "repo.config", message: "Swift doesn't require such manual pointer juggling")
 public func git_repository_config__weakptr(_: inout git_config?, _: git_repository) throws(GitError) { fatalError() }
 
-@available(*, unavailable, message: "Swift doesn't require such manual pointer juggling.")
+@available(*, unavailable, renamed: "repo.odb", message: "Swift doesn't require such manual pointer juggling.")
 public func git_repository_odb__weakptr(_: inout git_config?, _: git_repository) throws(GitError) { fatalError() }
 
-int git_repository_odb__weakptr(git_odb **out, git_repository *repo);
-int git_repository_refdb__weakptr(git_refdb **out, git_repository *repo);
-int git_repository_index__weakptr(git_index **out, git_repository *repo);
-int git_repository_grafts__weakptr(git_grafts **out, git_repository *repo);
-int git_repository_shallow_grafts__weakptr(git_grafts **out, git_repository *repo);
+@available(*, unavailable, renamed: "repo.odb", message: "Swift doesn't require such manual pointer juggling")
+public func git_repository_odb__weakptr(_: inout git_odb?, _: git_repository) {  fatalError() }
+
+@available(*, unavailable, renamed: "repo.refdb", message: "Swift doesn't require such manual pointer juggling")
+public func git_repository_refdb__weakptr(_: inout git_refdb?, _: git_repository) {  fatalError() }
+
+@available(*, unavailable, renamed: "repo.index", message: "Swift doesn't require such manual pointer juggling")
+public func git_repository_index__weakptr(_: inout git_index?, _: git_repository) {  fatalError() }
+
+@available(*, unavailable, renamed: "repo.grafts", message: "Swift doesn't require such manual pointer juggling")
+public func git_repository_grafts__weakptr(_: inout git_grafts?, _: git_repository) {  fatalError() }
+
+@available(*, unavailable, renamed: "repo.shallowGrafts", message: "Swift doesn't require such manual pointer juggling")
+public func git_repository_shallow_grafts__weakptr(_: inout git_grafts?, _: git_repository) {  fatalError() }
+
+@available(*, unavailable, message: "This now returns a String and throws an error, rather than returning an error code and taking an inout string")
+public func git_repository_workdir_path(_: inout git_str, _: git_repository, _: CharStar) -> CInt { fatalError() }

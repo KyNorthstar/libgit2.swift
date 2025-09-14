@@ -95,10 +95,13 @@ public extension Writestream {
 // MARK: - Consistency
 
 /// All types in this repo should conform to this by default
-public typealias AnyTypeProtocol = Copyable
+public typealias AnyTypeProtocol = Copyable & Sendable
+
+/// All `protocol`s in this repo should conform to this by default
+public typealias AnyProtocolProtocol = AnyTypeProtocol
 
 /// All value types (e.g. `struct`s, `enum`s, etc.) in this repo should conform to this by default
-public typealias AnyValueTypeProtocol = AnyTypeProtocol & Sendable
+public typealias AnyValueTypeProtocol = AnyTypeProtocol
 
 /// All `struct`s in this repo should conform to this by default
 public typealias AnyStructProtocol = AnyValueTypeProtocol

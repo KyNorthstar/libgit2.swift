@@ -114,6 +114,17 @@ However, there are some situations where it won't work the same. For example, th
 
 In libgit2.swift, **these situations do not set any such error nor throw a Swift error**, but otherwise behave the same.
 
+For example, this code in libgit2:
+```c
+git_error_set(GIT_ERROR_REPOSITORY, "repository has no working directory");
+return GIT_EBAREREPO;
+```
+
+is written like this in libgit2.swift:
+```swift
+throw GitError(message: "repository has no working directory", kind: .repository, code: .operationNotAllowed_bareRepo)
+```
+
 
 #### Fewer errors???
 
@@ -206,6 +217,18 @@ This library foregoes using reference types unless absolutely necessary.
 libgit2 provides public functionality to specifically seed its random number generator, allowing for deterministic pseudo-randomness.
 
 libgit2.swift does not provide this functionality, instead using Swift's builtin random subsystem (which automatically stirs/seeds the random number generator), resulting in non-deterministic pseudo-randomness (or true randomness, depending on the implementation used).
+
+
+
+### Platform detection
+
+libgit2 uses C's compiler directives like `#if __APPLE__` to detect whether it's being compiled for an Apple operating system, like macOS or iOS.
+
+Swift has some similar mechanisms, but none which do exactly this.
+
+As a workaround, libgit2.swift currently uses `#if canImport(Darwin)` to check if the Darwin operating system libraries can be imported, and assume that says whether this is an Apple operating system.
+
+That is _not_ a perfect solition, but it's the best one available in 2025. Should a better solution become available (such as the proposed `#if os(Darwin)`), that should be adopted instead. In such a case, please let Ky know or fork this project to do that work.
 
 
 

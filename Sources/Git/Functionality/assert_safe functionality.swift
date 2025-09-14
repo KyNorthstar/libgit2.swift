@@ -12,6 +12,10 @@ import Foundation
 
 
 
+private let onNilErrorMessage = "Internal inconsistency error. Will attempt to recover."
+
+
+
 /// Safely guarantees the given expression is non-`nil` in production, without crashing.
 ///
 /// If the given expression is found to be `nil`, then a Swift error is thrown.
@@ -39,17 +43,58 @@ internal func assert<T>(
         errorKind: GitError.Kind,
         errorMessage: String) = (
             errorKind: .internal,
-            errorMessage: "Internal inconsistency error. Will attempt to recover."
+            errorMessage: onNilErrorMessage
         ),
     cleanup: () -> Void = {})
 throws(GitError) -> T {
     guard let expr else {
-        defer { cleanup() }
-        let onNil = onNil()
-        throw .init(message: "\(onNil.errorMessage): \(expressionLabel)", kind: onNil.errorKind)
+        throw gitAssertFailure(expressionLabel: expressionLabel, onNil: onNil(), cleanup: cleanup)
     }
     
     return expr
+}
+
+
+
+@available(*, unavailable, message: "No need to assert like this when `expr` is non-`nil`")
+@discardableResult
+internal func assert<T>(
+    expr: T,
+    expressionLabel: String = #function,
+    onNil: @autoclosure () -> (
+        errorKind: GitError.Kind,
+        errorMessage: String) = (
+            errorKind: .internal,
+            errorMessage: onNilErrorMessage
+        ),
+    cleanup: () -> Void = {})
+throws(GitError) -> T {
+    return expr
+}
+
+
+
+/// For when you know that an `assert(expr:)` will fail, just call this instead.
+///
+/// - Parameters:
+///   - expressionLabel: _optional_ - **Encouraged!** Labels the expression in the thrown error. This should be the name of the argument you're testing. Defaults to `#function`.
+///   - onNil:           _optional_ - Information logged/thrown when handling the `nil` case. Defaults to something generic.
+///   - cleanup:         _optional_ - Called after the error is thrown but before the function returns, in case you need to perform any cleanup work. This does not run when the value is non-`nil`.
+///
+/// - Returns: A ``GitError``  containing information provided in `expressionLabel` and `onNil`
+internal func gitAssertFailure(
+    expressionLabel: String = #function,
+    onNil: @autoclosure () -> (
+        errorKind: GitError.Kind,
+        errorMessage: String) = (
+            errorKind: .internal,
+            errorMessage: onNilErrorMessage
+        ),
+    cleanup: () -> Void = {})
+-> GitError {
+    defer { cleanup() }
+    let onNil = onNil()
+    return .init(message: "\(onNil.errorMessage): \(expressionLabel)", kind: onNil.errorKind)
 }
 
 

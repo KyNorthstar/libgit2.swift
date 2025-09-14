@@ -367,7 +367,7 @@ public func git_str_puts(_: inout git_str?, _: CharStar?) -> CInt { fatalError()
 @available(*, unavailable, renamed: "String.init(joining:with:separator:)")
 public func git_str_join(_: inout git_str?, _: CChar, _: CharStar, _: CharStar) -> CInt { fatalError() }
 
-@available(*, unavailable, renamed: "init(joiningPath:withPathComponent:)")
+@available(*, unavailable, renamed: "String.init(joiningPath:withPathComponent:)")
 public func git_str_joinpath(_: inout git_str?, _: CharStar, _: CharStar) -> CInt { fatalError() }
 
 @available(*, unavailable, message: "This is equivalent to `.removeAll(keepingCapacity: true)``")

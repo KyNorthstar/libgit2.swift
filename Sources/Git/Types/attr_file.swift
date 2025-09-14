@@ -118,7 +118,7 @@ public func git_fs_path_join_unrooted(
 throws -> (path: String, rootOffset: Int) {
     // Determine if path is rooted (absolute)
     let isAbsolute = path.hasPrefix("/")
-    var joined: String()
+    var joined  String()
     
     var root = git_fs_path_root(path)
 

@@ -15,10 +15,10 @@ import Foundation
 
 
 public struct Repository: AnyStructProtocol {
-    public var _odb: ObjectDatabase
-    public var _refdb: ReferenceDatabase
-    public var _config: Config?
-    public var _index: Index
+    public var odb: ObjectDatabase
+    public var refdb: ReferenceDatabase
+    public var config: Config?
+    public var index: Index
     
     public var objects: Cache
     public weak var attrcache: SafePointer<AttributeCache>?
@@ -27,7 +27,7 @@ public struct Repository: AnyStructProtocol {
     public var gitlink: String
     public var gitdir: String
     public var commondir: String
-    public var rawWorkdir: String
+    public var rawWorkdir: String?
     public var namespace: String
     
     public var ident_name: String
@@ -87,7 +87,7 @@ public enum ConfigmapItem: Int, AnyEnumProtocol {
  * symbolic; make sure that none of them is set to `-1`, since that is
  * the unique identifier for "not cached"
  */
-public struct ConfigmapValue: RawRepresentable, AnyStructProtocol {
+public struct git_configmap_value: RawRepresentable, AnyStructProtocol {
     public var rawValue: CInt
     
     public init(rawValue: RawValue) {
@@ -97,7 +97,7 @@ public struct ConfigmapValue: RawRepresentable, AnyStructProtocol {
 
 
 
-public extension ConfigmapValue {
+public extension git_configmap_value {
     
     /* The value hasn't been loaded from the cache yet */
     static let GIT_CONFIGMAP_NOT_CACHED = Self(rawValue: -1)
@@ -125,35 +125,35 @@ public extension ConfigmapValue {
     static let GIT_EOL_DEFAULT = GIT_EOL_NATIVE
 
     /* core.symlinks: bool */
-    static let GIT_SYMLINKS_DEFAULT = git_configmap_t.true
+    static let GIT_SYMLINKS_DEFAULT = Self(rawValue: git_configmap_t.true.rawValue)
     /* core.ignorecase */
-    static let GIT_IGNORECASE_DEFAULT = git_configmap_t.false
+    static let GIT_IGNORECASE_DEFAULT = Self(rawValue: git_configmap_t.false.rawValue)
     /* core.filemode */
-    static let GIT_FILEMODE_DEFAULT = git_configmap_t.true
+    static let GIT_FILEMODE_DEFAULT = Self(rawValue: git_configmap_t.true.rawValue)
     /* core.ignorestat */
-    static let GIT_IGNORESTAT_DEFAULT = git_configmap_t.false
+    static let GIT_IGNORESTAT_DEFAULT = Self(rawValue: git_configmap_t.false.rawValue)
     /* core.trustctime */
-    static let GIT_TRUSTCTIME_DEFAULT = git_configmap_t.true
+    static let GIT_TRUSTCTIME_DEFAULT = Self(rawValue: git_configmap_t.true.rawValue)
     /* core.abbrev */
     static let GIT_ABBREV_DEFAULT = Self(rawValue: 7)
     /* core.precomposeunicode */
-    static let GIT_PRECOMPOSE_DEFAULT = git_configmap_t.false
+    static let GIT_PRECOMPOSE_DEFAULT = Self(rawValue: git_configmap_t.false.rawValue)
     /* core.safecrlf */
-    static let GIT_SAFE_CRLF_DEFAULT = git_configmap_t.false
+    static let GIT_SAFE_CRLF_DEFAULT = Self(rawValue: git_configmap_t.false.rawValue)
     /* core.logallrefupdates */
-    static let GIT_LOGALLREFUPDATES_FALSE = git_configmap_t.false
-    static let GIT_LOGALLREFUPDATES_TRUE = git_configmap_t.true
+    static let GIT_LOGALLREFUPDATES_FALSE = Self(rawValue: git_configmap_t.false.rawValue)
+    static let GIT_LOGALLREFUPDATES_TRUE = Self(rawValue: git_configmap_t.true.rawValue)
     static let GIT_LOGALLREFUPDATES_UNSET = Self(rawValue: 2)
     static let GIT_LOGALLREFUPDATES_ALWAYS = Self(rawValue: 3)
     static let GIT_LOGALLREFUPDATES_DEFAULT = GIT_LOGALLREFUPDATES_UNSET
     /* core.protectHFS */
-    static let GIT_PROTECTHFS_DEFAULT = git_configmap_t.false
+    static let GIT_PROTECTHFS_DEFAULT = Self(rawValue: git_configmap_t.false.rawValue)
     /* core.protectNTFS */
-    static let GIT_PROTECTNTFS_DEFAULT = git_configmap_t.true
+    static let GIT_PROTECTNTFS_DEFAULT = Self(rawValue: git_configmap_t.true.rawValue)
     /* core.fsyncObjectFiles */
-    static let GIT_FSYNCOBJECTFILES_DEFAULT = git_configmap_t.false
+    static let GIT_FSYNCOBJECTFILES_DEFAULT = Self(rawValue: git_configmap_t.false.rawValue)
     /* core.longpaths */
-    static let GIT_LONGPATHS_DEFAULT = git_configmap_t.false
+    static let GIT_LONGPATHS_DEFAULT = Self(rawValue: git_configmap_t.false.rawValue)
 }
 
 
@@ -243,4 +243,7 @@ public extension Repository {
     
     @available(*, unavailable, renamed: "submoduleCache")
     var submodule_cache: StringMap { fatalError("use submoduleCache") }
+    
+    @available(*, unavailable, renamed: "rawWorkdir")
+    var workdir: CharStar? { fatalError() }
 }

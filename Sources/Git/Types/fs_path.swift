@@ -209,3 +209,52 @@ private extension ssize_t {
         }
     }
 }
+
+
+/** Flags to determine path validity in `git_fs_path_isvalid` */
+struct FilesystemPathReject: OptionSet {
+    /// The underlying bitfield.
+    let rawValue: Int
+
+    // MARK: Individual flag bindings
+    static let emptyComponent = PathReject(rawValue: 1 << 0)
+    static let traversal     = PathReject(rawValue: 1 << 1)
+    static let slash         = PathReject(rawValue: 1 << 2)
+    static let backslash     = PathReject(rawValue: 1 << 3)
+    static let trailingDot   = PathReject(rawValue: 1 << 4)
+    static let trailingSpace = PathReject(rawValue: 1 << 5)
+    static let trailingColon = PathReject(rawValue: 1 << 6)
+    static let dosPaths      = PathReject(rawValue: 1 << 7)
+    static let ntChars       = PathReject(rawValue: 1 << 8)
+    static let longPaths     = PathReject(rawValue: 1 << 9)
+
+    static let max: PathReject = .longPaths
+}
+
+
+
+// MARK: - Migration
+
+@available(*, unavailable, renamed: "FilesystemPathReject.emptyComponent")
+public var GIT_FS_PATH_REJECT_EMPTY_COMPONENT: Int { fatalError() }
+@available(*, unavailable, renamed: "FilesystemPathReject.traversal")
+public var GIT_FS_PATH_REJECT_TRAVERSAL: Int { fatalError() }
+@available(*, unavailable, renamed: "FilesystemPathReject.slash")
+public var GIT_FS_PATH_REJECT_SLASH: Int { fatalError() }
+@available(*, unavailable, renamed: "FilesystemPathReject.backslash")
+public var GIT_FS_PATH_REJECT_BACKSLASH: Int { fatalError() }
+@available(*, unavailable, renamed: "FilesystemPathReject.trailingDot")
+public var GIT_FS_PATH_REJECT_TRAILING_DOT: Int { fatalError() }
+@available(*, unavailable, renamed: "FilesystemPathReject.trailingSpace")
+public var GIT_FS_PATH_REJECT_TRAILING_SPACE: Int { fatalError() }
+@available(*, unavailable, renamed: "FilesystemPathReject.trailingColon")
+public var GIT_FS_PATH_REJECT_TRAILING_COLON: Int { fatalError() }
+@available(*, unavailable, renamed: "FilesystemPathReject.dosPaths")
+public var GIT_FS_PATH_REJECT_DOS_PATHS: Int { fatalError() }
+@available(*, unavailable, renamed: "FilesystemPathReject.ntChars")
+public var GIT_FS_PATH_REJECT_NT_CHARS: Int { fatalError() }
+@available(*, unavailable, renamed: "FilesystemPathReject.longPaths")
+public var GIT_FS_PATH_REJECT_LONG_PATHS: Int { fatalError() }
+
+@available(*, unavailable, renamed: "FilesystemPathReject.max")
+public var GIT_FS_PATH_REJECT_MAX: Int { fatalError() }

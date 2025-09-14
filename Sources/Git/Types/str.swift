@@ -17,4 +17,4 @@ public typealias git_str = String
 @available(*, unavailable, renamed: "StringMap")
 public typealias git_strmap = StringMap
 
-public typealias StringMap = [String : any AnyTypeProtocol]
+public typealias StringMap = [String : any (AnyTypeProtocol & Sendable)]

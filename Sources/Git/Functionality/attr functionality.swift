@@ -22,7 +22,7 @@ internal func collect_attr_files(
     session attr_session: git_attr_session,
     options opts: git_attr_options,
     path: String,
-    files: SelfSortingArray<Never>) // TODO: Use actual type
+    files: SelfSortingArray<any AnyTypeProtocol>) // TODO: Use actual type
 throws(GitError)
 {
     var error: GitError? = nil
@@ -43,7 +43,8 @@ throws(GitError)
     catch {}
 
     /* Resolve path in a non-bare repo */
-    if (workdir != NULL) {
+    if let workdir {
+        try git_repository_workdir_path(&dir, repo, path)
         if (!(error = git_repository_workdir_path(&dir, repo, path)))
             error = git_fs_path_find_dir(&dir);
     }
