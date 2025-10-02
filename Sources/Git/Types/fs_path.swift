@@ -111,7 +111,7 @@ public func git_fs_path_root(_ path: String) -> PathRoot {
         offset += prefix_len;
     }
     
-#if GIT_WIN32
+#if os(Windows)
     TODO; all.this.shit
 //    /* Are we dealing with a windows network path? */
 //    else if ((path[0] == '/' && path[1] == '/' && path[2] != '/') ||

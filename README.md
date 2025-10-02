@@ -2,7 +2,8 @@
 
 A reimplementation of [libgit2](https://github.com/libgit2/libgit2) in Swift.
 
-Based on libgit2 1.8.4 because that was the most recent release when We started writing it.
+**Based on libgit2 1.8.4** because that was the most recent release when We started writing it.
+Tho some of that was a bit silly (like `util/unix/realpath.c` didn't compile on Open BSD) so We took some from 1.9.1 too.
 
 Written by Ky, who doesn't recommend you use this. Instead, they recommend you use their package [Gitsune](https://GitHub.com/KyNorthstar/Gitsune), which is a more-Swiftey wrapper around this package.
 

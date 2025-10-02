@@ -11,6 +11,7 @@
 import Foundation
 
 import SafeCollectionAccess
+import StringIntegerAccess
 
 
 
@@ -130,7 +131,7 @@ public extension Config {
     /// - Returns: the result of the parsing
     /// - Throws An error if parsing failed.
     // Analogous to `git_config_parse_int32`
-    static func parseInt32(_ value: String) throws(GitError) -> __int32_t {
+    static func parseInt32(_ value: String) throws(GitError) -> Int32 {
         @inline(__always)
         var failParseError: GitError {
             GitError(message: "failed to parse '\(value)' as a 32-bit integer", kind: .config, code: .__generic)
@@ -139,7 +140,7 @@ public extension Config {
         
         let tmp = try mapError(try parseInt64(value)) { failParseError }
         
-        let truncate = __int32_t(truncatingIfNeeded: tmp)
+        let truncate = Int32(truncatingIfNeeded: tmp)
         guard truncate == tmp else {
             throw failParseError
         }
@@ -153,36 +154,72 @@ public extension Config {
  * API for repository configmap-style lookups from config - not cached, but
  * uses configmap value maps and fallbacks
  */
-public func git_config__configmap_lookup(config: Config, item: ConfigmapItem) throws(GitError) -> CInt {
-    var error: GitError? = nil
+public func git_config__configmap_lookup(config: Config, item: ConfigmapItem) throws(GitError) -> Int {
     var data: map_data = _configmaps[item.rawValue]
     var entry: git_config_entry?
     
-    entry = try handleErrorsWithCodesButNotKinds(
-        do: { () throws(GitError) -> git_config_entry? in
-            try git_config__lookup_entry(cfg: config, key: data.name, no_errors: false)
+    try handleErrorsWithCodesButNotKinds(
+        do: { () throws(GitError) -> Void in
+            entry = try git_config__lookup_entry(cfg: config, key: data.name, no_errors: false)
         },
-        catch: { (error: GitError) throws(GitError) -> git_config_entry? in throw error }
+        catch: { (error: GitError) throws(GitError) -> Void in throw error }
     )
     
     
-    if nil == entry {
-        return data.default_value
+    guard let entry else {
+        return data.default_value.rawValue
     }
-    else if let maps = data.maps {
+    
+    if let maps = data.maps {
         return try git_config_lookup_map_value(maps: maps, value: entry.value)
-        return try git_config_lookup_map_value(
-            maps, data.map_count, entry.value);
     }
     else {
-        return try git_config_parse_bool(entry.value)
+        return switch try Config.parseBool(entry.value) {
+        case true:  git_configmap_t.true.rawValue
+        case false: git_configmap_t.false.rawValue
+        }
     }
 }
 
 
 
+/* Take something the user gave us and make it nice for our hash function */
+// Ky 2025-09-28: For some reason, the original function doesn't normalize anything between the first & last `"."` characters...
 public func git_config__normalize_name(_ in: String) throws(GitError) -> String {
-    TODO
+    let name: String
+    let fdot: String
+    let ldot: String
+    
+    var invalid: GitError {
+        GitError(message: "invalid config item name '\(`in`)'", kind: .config, code: .badRefspecFormat)
+    }
+    
+    name = `in`
+    
+    guard let firstDotIndex = name.firstIndex(of: "."),
+          let lastDotIndex  = name.lastIndex(of: "."),
+          firstDotIndex != name.startIndex,
+          lastDotIndex < name.endIndex
+    else {
+        throw invalid
+    }
+    
+    
+    /* Validate and downcase up to first dot and after last dot */
+    do {
+        name = try normalize_section(start: name.startIndex, end: firstDotIndex, in: name)
+        name = try normalize_section(start: name.index(after: lastDotIndex), end: nil, in: name)
+    }
+    catch {
+        throw invalid
+    }
+    
+    /* If there is a middle range, make sure it doesn't have newlines */
+    guard !name[firstDotIndex ..< lastDotIndex].contains("\n") else {
+        throw invalid
+    }
+    
+    return name
 }
 
 
@@ -208,7 +245,7 @@ throws(GitError) -> Int {
             }
             
         case .int32:
-            return Int(try Config.parseInt32(value))
+            return Int(try Config.parseInt64(value))
             
         case .string:
             if 0 == strcasecmp(value, m.str_match) {
@@ -321,6 +358,34 @@ throws(GitError)
     
     try cleanup()
     return nil
+}
+
+
+private func normalize_section(start: String.Index, end: String.Index?, in fullString: String) throws(GitError) -> String
+{
+    guard start != end else {
+        throw .badRefspecFormat
+    }
+    var fullString = fullString
+    var scannedIndex = start
+    while var scanningIndex = fullString.indexOrNil(after: scannedIndex) {
+        scannedIndex = scanningIndex
+        
+        guard var scanningChar = fullString[orNil: scanningIndex] else { break }
+        
+        if CharacterSet.alphanumerics.contains(scanningChar) {
+            fullString.replaceCharacters(in: scannedIndex...scannedIndex, with: scanningChar.lowercased())
+        }
+        else if "-" != scanningChar || start == scanningIndex {
+            throw .badRefspecFormat
+        }
+    }
+    
+    if start == scannedIndex {
+        throw .badRefspecFormat
+    }
+    
+    return fullString
 }
 
 

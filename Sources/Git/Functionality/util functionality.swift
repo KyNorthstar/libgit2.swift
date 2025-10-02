@@ -14,7 +14,7 @@ import Foundation
 
 
 public func _getEnv(name: String) throws(GitError) -> String {
-#if GIT_WIN32
+#if os(Windows)
     var wide_name: String? = nil
     var wide_value: String? = nil
     let value_len: DWORD

@@ -265,81 +265,81 @@ public extension GitError {
 public extension GitError {
     
     // MARK: Codes
-    static var objectNotFound: Self                       { .init(code: .objectNotFound) }
-    static var objectAlreadyExists: Self                  { .init(code: .objectAlreadyExists) }
+    @inline(__always) static var objectNotFound: Self                       { .init(code: .objectNotFound) }
+    @inline(__always) static var objectAlreadyExists: Self                  { .init(code: .objectAlreadyExists) }
     
-    static var moreThanOneObjectMatches: Self             { .init(code: .moreThanOneObjectMatches) }
-    static var outputBufferTooShort: Self                 { .init(code: .outputBufferTooShort) }
-    static var custom: Self                               { .init(code: .custom) }
-    static var operaationNotAllowed_bareRepo: Self        { .init(code: .operationNotAllowed_bareRepo) }
-    static var noCommitsOnHeadBranch: Self                { .init(code: .noCommitsOnHeadBranch) }
-    static var mergeInProgress: Self                      { .init(code: .mergeInProgress) }
-    static var referenceDoesNotSupportFastForward: Self   { .init(code: .referenceDoesNotSupportFastForward) }
-    static var badRefspecFormat: Self                     { .init(code: .badRefspecFormat) }
-    static var conflict: Self                             { .init(code: .conflict) }
-    static var locked: Self                               { .init(code: .locked) }
-    static var MODIFIED: Self                             { .init(code: .MODIFIED) }
-    static var authenticationFailed: Self                 { .init(code: .authenticationFailed) }
-    static var invalidServerCertificate: Self             { .init(code: .invalidServerCertificate) }
-    static var patchOrMergeAlreadyApplied: Self           { .init(code: .patchOrMergeAlreadyApplied) }
-    static var peelOperationNotPossible: Self             { .init(code: .peelOperationNotPossible) }
-    static var unexpectedEof: Self                        { .init(code: .unexpectedEof) }
-    static var invalidOperationOrInput: Self              { .init(code: .invalidOperationOrInput) }
-    static var uncommittedChangesPreventOperation: Self   { .init(code: .uncommittedChangesPreventOperation) }
-    static var directoryDoesNotSupportThisOperation: Self { .init(code: .directoryDoesNotSupportThisOperation) }
-    static var mergeConflict: Self                        { .init(code: .mergeConflict) }
+    @inline(__always) static var moreThanOneObjectMatches: Self             { .init(code: .moreThanOneObjectMatches) }
+    @inline(__always) static var outputBufferTooShort: Self                 { .init(code: .outputBufferTooShort) }
+    @inline(__always) static var custom: Self                               { .init(code: .custom) }
+    @inline(__always) static var operaationNotAllowed_bareRepo: Self        { .init(code: .operationNotAllowed_bareRepo) }
+    @inline(__always) static var noCommitsOnHeadBranch: Self                { .init(code: .noCommitsOnHeadBranch) }
+    @inline(__always) static var mergeInProgress: Self                      { .init(code: .mergeInProgress) }
+    @inline(__always) static var referenceDoesNotSupportFastForward: Self   { .init(code: .referenceDoesNotSupportFastForward) }
+    @inline(__always) static var badRefspecFormat: Self                     { .init(code: .badRefspecFormat) }
+    @inline(__always) static var conflict: Self                             { .init(code: .conflict) }
+    @inline(__always) static var locked: Self                               { .init(code: .locked) }
+    @inline(__always) static var MODIFIED: Self                             { .init(code: .MODIFIED) }
+    @inline(__always) static var authenticationFailed: Self                 { .init(code: .authenticationFailed) }
+    @inline(__always) static var invalidServerCertificate: Self             { .init(code: .invalidServerCertificate) }
+    @inline(__always) static var patchOrMergeAlreadyApplied: Self           { .init(code: .patchOrMergeAlreadyApplied) }
+    @inline(__always) static var peelOperationNotPossible: Self             { .init(code: .peelOperationNotPossible) }
+    @inline(__always) static var unexpectedEof: Self                        { .init(code: .unexpectedEof) }
+    @inline(__always) static var invalidOperationOrInput: Self              { .init(code: .invalidOperationOrInput) }
+    @inline(__always) static var uncommittedChangesPreventOperation: Self   { .init(code: .uncommittedChangesPreventOperation) }
+    @inline(__always) static var directoryDoesNotSupportThisOperation: Self { .init(code: .directoryDoesNotSupportThisOperation) }
+    @inline(__always) static var mergeConflict: Self                        { .init(code: .mergeConflict) }
 
-    static var userConfiguredCallbackRefusedToAct: Self   { .init(code: .userConfiguredCallbackRefusedToAct) }
-    static var iterationComplete: Self                    { .init(code: .iterationComplete) }
-    static var __internal__retry: Self                    { .init(code: .__internal__retry) }
-    static var hashMismatch: Self                         { .init(code: .hashMismatch) }
-    static var unsavedChangesCouldNotBeOverwritten: Self  { .init(code: .unsavedChangesCouldNotBeOverwritten) }
-    static var couldNotApplyPatch: Self                   { .init(code: .couldNotApplyPatch) }
-    static var objectNotOwnedByUser: Self                 { .init(code: .objectNotOwnedByUser) }
-    static var operationTimedOut: Self                    { .init(code: .operationTimedOut) }
-    static var noChanges: Self                            { .init(code: .noChanges) }
-    static var unsupportedOperation: Self                 { .init(code: .unsupportedOperation) }
-    static var readOnly: Self                             { .init(code: .readOnly) }
+    @inline(__always) static var userConfiguredCallbackRefusedToAct: Self   { .init(code: .userConfiguredCallbackRefusedToAct) }
+    @inline(__always) static var iterationComplete: Self                    { .init(code: .iterationComplete) }
+    @inline(__always) static var __internal__retry: Self                    { .init(code: .__internal__retry) }
+    @inline(__always) static var hashMismatch: Self                         { .init(code: .hashMismatch) }
+    @inline(__always) static var unsavedChangesCouldNotBeOverwritten: Self  { .init(code: .unsavedChangesCouldNotBeOverwritten) }
+    @inline(__always) static var couldNotApplyPatch: Self                   { .init(code: .couldNotApplyPatch) }
+    @inline(__always) static var objectNotOwnedByUser: Self                 { .init(code: .objectNotOwnedByUser) }
+    @inline(__always) static var operationTimedOut: Self                    { .init(code: .operationTimedOut) }
+    @inline(__always) static var noChanges: Self                            { .init(code: .noChanges) }
+    @inline(__always) static var unsupportedOperation: Self                 { .init(code: .unsupportedOperation) }
+    @inline(__always) static var readOnly: Self                             { .init(code: .readOnly) }
     
     
     // MARK: Kinds
     
-    static var noMemory: Self   { .init(kind: .noMemory) }
-    static var os: Self         { .init(kind: .os) }
-    static var invalid: Self    { .init(kind: .invalid) }
-    static var reference: Self  { .init(kind: .reference) }
-    static var zlib: Self       { .init(kind: .zlib) }
-    static var repository: Self { .init(kind: .repository) }
-    static var config: Self     { .init(kind: .config) }
-    static var regex: Self      { .init(kind: .regex) }
-    static var odb: Self        { .init(kind: .odb) }
-    static var index: Self      { .init(kind: .index) }
-    static var object: Self     { .init(kind: .object) }
-    static var net: Self        { .init(kind: .net) }
-    static var tag: Self        { .init(kind: .tag) }
-    static var tree: Self       { .init(kind: .tree) }
-    static var indexer: Self    { .init(kind: .indexer) }
-    static var ssl: Self        { .init(kind: .ssl) }
-    static var submodule: Self  { .init(kind: .submodule) }
-    static var thread: Self     { .init(kind: .thread) }
-    static var stash: Self      { .init(kind: .stash) }
-    static var checkout: Self   { .init(kind: .checkout) }
-    static var fetchHead: Self  { .init(kind: .fetchHead) }
-    static var merge: Self      { .init(kind: .merge) }
-    static var ssh: Self        { .init(kind: .ssh) }
-    static var filter: Self     { .init(kind: .filter) }
-    static var revert: Self     { .init(kind: .revert) }
-    static var callback: Self   { .init(kind: .callback) }
-    static var cherrypick: Self { .init(kind: .cherrypick) }
-    static var describe: Self   { .init(kind: .describe) }
-    static var rebase: Self     { .init(kind: .rebase) }
-    static var filesystem: Self { .init(kind: .filesystem) }
-    static var patch: Self      { .init(kind: .patch) }
-    static var worktree: Self   { .init(kind: .worktree) }
-    static var sha: Self        { .init(kind: .sha) }
-    static var http: Self       { .init(kind: .http) }
-    static var `internal`: Self { .init(kind: .internal) }
-    static var grafts: Self     { .init(kind: .grafts) }
+    @inline(__always) static var noMemory: Self   { .init(kind: .noMemory) }
+    @inline(__always) static var os: Self         { .init(kind: .os) }
+    @inline(__always) static var invalid: Self    { .init(kind: .invalid) }
+    @inline(__always) static var reference: Self  { .init(kind: .reference) }
+    @inline(__always) static var zlib: Self       { .init(kind: .zlib) }
+    @inline(__always) static var repository: Self { .init(kind: .repository) }
+    @inline(__always) static var config: Self     { .init(kind: .config) }
+    @inline(__always) static var regex: Self      { .init(kind: .regex) }
+    @inline(__always) static var odb: Self        { .init(kind: .odb) }
+    @inline(__always) static var index: Self      { .init(kind: .index) }
+    @inline(__always) static var object: Self     { .init(kind: .object) }
+    @inline(__always) static var net: Self        { .init(kind: .net) }
+    @inline(__always) static var tag: Self        { .init(kind: .tag) }
+    @inline(__always) static var tree: Self       { .init(kind: .tree) }
+    @inline(__always) static var indexer: Self    { .init(kind: .indexer) }
+    @inline(__always) static var ssl: Self        { .init(kind: .ssl) }
+    @inline(__always) static var submodule: Self  { .init(kind: .submodule) }
+    @inline(__always) static var thread: Self     { .init(kind: .thread) }
+    @inline(__always) static var stash: Self      { .init(kind: .stash) }
+    @inline(__always) static var checkout: Self   { .init(kind: .checkout) }
+    @inline(__always) static var fetchHead: Self  { .init(kind: .fetchHead) }
+    @inline(__always) static var merge: Self      { .init(kind: .merge) }
+    @inline(__always) static var ssh: Self        { .init(kind: .ssh) }
+    @inline(__always) static var filter: Self     { .init(kind: .filter) }
+    @inline(__always) static var revert: Self     { .init(kind: .revert) }
+    @inline(__always) static var callback: Self   { .init(kind: .callback) }
+    @inline(__always) static var cherrypick: Self { .init(kind: .cherrypick) }
+    @inline(__always) static var describe: Self   { .init(kind: .describe) }
+    @inline(__always) static var rebase: Self     { .init(kind: .rebase) }
+    @inline(__always) static var filesystem: Self { .init(kind: .filesystem) }
+    @inline(__always) static var patch: Self      { .init(kind: .patch) }
+    @inline(__always) static var worktree: Self   { .init(kind: .worktree) }
+    @inline(__always) static var sha: Self        { .init(kind: .sha) }
+    @inline(__always) static var http: Self       { .init(kind: .http) }
+    @inline(__always) static var `internal`: Self { .init(kind: .internal) }
+    @inline(__always) static var grafts: Self     { .init(kind: .grafts) }
 }
 
 

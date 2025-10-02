@@ -44,9 +44,8 @@ throws(GitError)
 
     /* Resolve path in a non-bare repo */
     if let workdir {
-        try git_repository_workdir_path(&dir, repo, path)
-        if (!(error = git_repository_workdir_path(&dir, repo, path)))
-            error = git_fs_path_find_dir(&dir);
+        dir = try git_repository_workdir_path(repo: repo, path: path)
+        dir = try git_fs_path_find_dir(dir: dir)
     }
     else {
         error = git_fs_path_dirname_r(&dir, path);

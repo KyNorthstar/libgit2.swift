@@ -161,6 +161,28 @@ This package also chooses _only_ CommonCrypto as the hash creation backend for a
 
 
 
+### Primitives
+
+The following describes how primitives appear in libgit2, and how libgit2.swift translates them in situations where other types don't better describe the value (e.g. an `enum`, `GitError`, etc.):
+
+|    libgit2     |          note          |     libgit2.swift    |
+| -------------- | ---------------------- | -------------------- |
+| `int`          |                        | `Int`                |
+| `int8_t`       |                        | `Int8`               |
+| `int16_t`      |                        | `Int16`              |
+| `int32_t`      |                        | `Int32`              |
+| `int64_t`      |                        | `Int64`              |
+| `unsigned`     |                        | `UInt`               |
+| `unsigned int` |                        | `UInt`               |
+| `uint8_t`      |                        | `UInt8`              |
+| `uint16_t`     |                        | `UInt16`             |
+| `uint32_t`     |                        | `UInt32`             |
+| `uint64_t`     |                        | `UInt64`             |
+| `size_t`       | For collection indices | `<collection>.Index` |
+| `size_t`       | For collection counts  | `Int`                |
+
+
+
 ### Strings
 
 libgit2.swift uses the Swift native `String` type wherever the concpet of a text string exists in libgit.
@@ -221,6 +243,15 @@ libgit2.swift does not provide this functionality, instead using Swift's builtin
 
 
 ### Platform detection
+
+#### Windows platforms
+
+libgit2 uses a custom `GIT_WIN32` compiler define to switch compile-time implementations depending on whether it's being compiled for Windows. This is defined when `_WIN32` is detected _but not_ `__CYGWIN__`
+
+Swift Package Manager 
+
+
+#### Apple platforms
 
 libgit2 uses C's compiler directives like `#if __APPLE__` to detect whether it's being compiled for an Apple operating system, like macOS or iOS.
 

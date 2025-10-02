@@ -28,3 +28,6 @@ func git_allocator_global_init() -> CInt { fatalError() }
 
 @available(*, unavailable, renamed: "Array", message: "Swift's array allocation is smart enough that this is not needed. Use `array.reserveCapacity` if you need to reserve capacity.")
 public func git__calloc<T>(_: size_t, _: size_t) -> T { fatalError() }
+
+@available(*, unavailable, message: "Swift Strings are copy-on-write, so there is no need for explicit duplication.")
+func git__strdup(_: String) -> String { fatalError() }

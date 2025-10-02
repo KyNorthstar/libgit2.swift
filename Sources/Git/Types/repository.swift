@@ -117,7 +117,7 @@ public extension git_configmap_value {
     static let GIT_EOL_UNSET = Self(rawValue: 0)
     static let GIT_EOL_CRLF = Self(rawValue: 1)
     static let GIT_EOL_LF = Self(rawValue: 2)
-#if GIT_WIN32
+#if os(Windows)
     static let GIT_EOL_NATIVE = GIT_EOL_CRLF
 #else
     static let GIT_EOL_NATIVE = GIT_EOL_LF

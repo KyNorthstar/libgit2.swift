@@ -20,8 +20,9 @@ let package = Package(
         .package(url: "https://github.com/RougeWare/Swift-Either.git", from: "1.0.1"),
         .package(url: "https://github.com/RougeWare/Swift-Lazy-Containers.git", from: "4.1.0"),
         .package(url: "https://github.com/RougeWare/Swift-Optional-Tools.git", from: "1.2.0"),
-        .package(url: "https://github.com/RougeWare/Swift-Safe-Collection-Access.git", from: "2.2.2"),
+        .package(url: "https://github.com/RougeWare/Swift-Safe-Collection-Access.git", from: "2.3.0"),
 //        .package(url: "https://github.com/RougeWare/Swift-Simple-Logging", from: "0.5.2"),
+        .package(url: "https://github.com/RougeWare/Swift-String-Integer-Access", from: "2.1.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -34,11 +35,13 @@ let package = Package(
                 .product(name: "LazyContainers", package: "Swift-Lazy-Containers"),
                 .product(name: "OptionalTools", package: "Swift-Optional-Tools"),
                 .product(name: "SafeCollectionAccess", package: "Swift-Safe-Collection-Access"),
+                .product(name: "StringIntegerAccess", package: "Swift-String-Integer-Access"),
 //                .product(name: "SimpleLogging", package: "Swift-Simple-Logging"),
             ],
             swiftSettings: [
                 .define("GIT_WIN32", .when(platforms: [.windows])),
-                .define("DEBUG", .when(configuration: .debug))
+                .define("DEBUG", .when(configuration: .debug)),
+                .define("__OpenBSD__", .when(platforms: [.openbsd])),
             ]),
         .testTarget(
             name: "GitTests",

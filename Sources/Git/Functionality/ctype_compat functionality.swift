@@ -12,7 +12,7 @@ import Foundation
 
 
 
-#if GIT_WIN32
+#if os(Windows)
 
 func git__tolower(_ c: int) -> int
 {

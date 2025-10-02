@@ -81,7 +81,7 @@ private extension Libgit2 {
             git_settings_global_init
         ]
         
-        #if GIT_WIN32
+        #if os(Windows)
         return [git_win32_leakcheck_global_init] + general
         #else
         return general

@@ -1,5 +1,5 @@
 {
-  "originHash" : "f156436b11b5b3c102b916858703841941df42ba6a7c8dba1281e6cbc09d7f37",
+  "originHash" : "2c4f9eac5e79bed4f8ee122b45c780c0ebcc0cb19364820fc0445e4657ac5521",
   "pins" : [
     {
       "identity" : "swift-either",
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/RougeWare/Swift-Safe-Collection-Access",
       "state" : {
-        "revision" : "a2a2f8773f5e85804be785177fa3bf1abeb37dea",
-        "version" : "2.2.2"
+        "revision" : "fef8e158f44daab66d24cf364a1b441bb64ade39",
+        "version" : "2.3.0"
       }
     },
     {
@@ -53,6 +53,15 @@
       "state" : {
         "revision" : "a71a39d19275d90e13f362c3d23163dc41318d85",
         "version" : "2.1.3"
+      }
+    },
+    {
+      "identity" : "swift-string-integer-access",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RougeWare/Swift-String-Integer-Access",
+      "state" : {
+        "revision" : "595374e76274a7e951ba183fdd7f443801091d14",
+        "version" : "2.1.0"
       }
     }
   ],

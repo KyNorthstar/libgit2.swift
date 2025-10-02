@@ -81,7 +81,7 @@ public func git_sysdir_find_system_file(path: String, filename: String) throws(G
 // MARK: Guessing
 
 func git_sysdir_guess_system_dirs() throws(GitError) -> String? {
-#if GIT_WIN32
+#if os(Windows)
     return git_win32__find_system_dirs("etc")
 #else
     return "/etc"
@@ -91,7 +91,7 @@ func git_sysdir_guess_system_dirs() throws(GitError) -> String? {
     //
     // static int git_sysdir_guess_system_dirs(git_str *out)
     // {
-    // #ifdef GIT_WIN32
+    // #ifdef os(Windows)
     //     return git_win32__find_system_dirs(out, "etc");
     // #else
     //     return git_str_sets(out, "/etc");
@@ -293,7 +293,7 @@ private extension SysDir.Dir {
 private extension SysDir.Dir {
     // Analogous to `git_sysdir_guess_system_dirs`
     static func guessSystemDirs() throws(GitError) -> String {
-#if GIT_WIN32
+#if os(Windows)
         git_win32__find_system_dirs(out, "etc");
 #else
         "/etc"
@@ -308,7 +308,7 @@ private extension SysDir.Dir {
     // Analogous to `git_sysdir_guess_home_dirs`
     static func guessHomeDirs() throws(GitError) -> String?
     {
-#if GIT_WIN32
+#if os(Windows)
         find_win32_dirs([
             "%HOME%\\",
             "%HOMEDRIVE%%HOMEPATH%\\",
@@ -353,7 +353,7 @@ private extension SysDir.Dir {
         //
         // static int git_sysdir_guess_home_dirs(git_str *out)
         // {
-        // #ifdef GIT_WIN32
+        // #ifdef os(Windows)
         //     static const wchar_t *global_tmpls[4] = {
         //         L"%HOME%\\",
         //         L"%HOMEDRIVE%%HOMEPATH%\\",
@@ -401,7 +401,7 @@ private extension SysDir.Dir {
     
     // Analogous to `git_sysdir_guess_xdg_dirs`
     static func guessXdgDirs() throws(GitError) -> String {
-#if GIT_WIN32
+#if os(Windows)
         try find_win32_dirs([
             "%XDG_CONFIG_HOME%\\git",
             "%APPDATA%\\git",
@@ -433,7 +433,7 @@ private extension SysDir.Dir {
         //
         // static int git_sysdir_guess_xdg_dirs(git_str *out)
         // {
-        // #ifdef GIT_WIN32
+        // #ifdef os(Windows)
         //     static const wchar_t *global_tmpls[7] = {
         //         L"%XDG_CONFIG_HOME%\\git",
         //         L"%APPDATA%\\git",
@@ -482,7 +482,7 @@ private extension SysDir.Dir {
     
     // Analogous to `git_sysdir_guess_programdata_dirs`
     static func guessProgramdataDirs() throws(GitError) -> String? {
-#if GIT_WIN32
+#if os(Windows)
         try find_win32_dirs([
             "%PROGRAMDATA%\\Git",
         ])
@@ -494,7 +494,7 @@ private extension SysDir.Dir {
     
     // Analogous to `git_sysdir_guess_template_dirs`
     static func guessTemplateDirs() throws(GitError) -> String? {
-#if GIT_WIN32
+#if os(Windows)
         try git_win32__find_system_dirs("share/git-core/templates")
 #else
         "/usr/share/git-core/templates"
@@ -502,7 +502,7 @@ private extension SysDir.Dir {
     }
     
     
-#if !GIT_WIN32
+#if !os(Windows)
     static func passwdHome(uid: uid_t) throws(GitError) -> String
     {
         var pwd = passwd()

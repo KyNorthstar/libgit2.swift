@@ -23,7 +23,7 @@ public struct Config: AnyStructProtocol {
 /**
  * Config var type
  */
-public enum git_configmap_t: CInt, AnyEnumProtocol {
+public enum git_configmap_t: Int, AnyEnumProtocol {
     case `false` = 0
     case `true` = 1
     case int32

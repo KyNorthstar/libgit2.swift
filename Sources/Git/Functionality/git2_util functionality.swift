@@ -71,6 +71,12 @@ public func GIT_ERROR_CHECK_ALLOC<T>(_ ptr: T?) throws(GitError) {
     guard nil != ptr else { throw .generic }
 }
 
+@available(*, deprecated, message: "If it ain't `nil`, it's allocated")
+@inline(__always)
+public func GIT_ERROR_CHECK_ALLOC<T>(_ ptr: T) throws(GitError) {
+    return
+}
+
 
 /** Check for additive overflow, failing if it would occur. */
 @inline(__always)

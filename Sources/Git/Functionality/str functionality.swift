@@ -301,12 +301,12 @@ public extension String {
 
 
 
-func git_str_sets(buf: inout String, string: String?) throws(GitError) {
+public func git_str_sets(buf: inout String, string: String?) throws(GitError) {
     try git_str_set(buffer: &buf, source: string, length: string?.count ?? 0)
 }
 
 
-func git_str_set(buffer buf: inout String, source data: String?, length len: size_t) throws(GitError) {
+public func git_str_set(buffer buf: inout String, source data: String?, length len: size_t) throws(GitError) {
     var alloclen: size_t
     
     guard let data, len != 0 else {
