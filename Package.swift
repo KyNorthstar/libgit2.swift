@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -35,6 +35,7 @@ let package = Package(
                 .product(name: "LazyContainers", package: "Swift-Lazy-Containers"),
                 .product(name: "OptionalTools", package: "Swift-Optional-Tools"),
                 .product(name: "SafeCollectionAccess", package: "Swift-Safe-Collection-Access"),
+                .product(name: "SafeStringIntegerAccess", package: "Swift-String-Integer-Access"),
                 .product(name: "StringIntegerAccess", package: "Swift-String-Integer-Access"),
 //                .product(name: "SimpleLogging", package: "Swift-Simple-Logging"),
             ],

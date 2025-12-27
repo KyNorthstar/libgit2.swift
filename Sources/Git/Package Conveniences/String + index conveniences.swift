@@ -14,3 +14,12 @@ internal extension Collection {
         startIndex..<endIndex
     }
 }
+
+
+
+internal extension RandomAccessCollection {
+    var indexClosedRange: ClosedRange<Index> {
+        guard startIndex != endIndex else { return startIndex ... startIndex }
+        return startIndex ... index(before: endIndex)
+    }
+}

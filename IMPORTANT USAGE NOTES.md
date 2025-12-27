@@ -81,10 +81,12 @@ libgit2 signifies error conditions with functions which return negative numbers,
 
 int git_old_style(void)
 {
-    if (git_setup_operation() < 0 ||
-        git_process_operation() < 0)
-        return -1;
-
+    int error = 0;
+    
+    if ((error = git_setup_operation()) < 0 ||
+        (error = git_process_operation()) < 0)
+        return error;
+    
     return 0;
 }
 ```
@@ -99,6 +101,37 @@ func newStyle() throws(GitError) {
     try processOperation()
 }
 ```
+
+Of coruse, if the original code throws a specific error code when any is caught, or only checks for specific error codes, this library replicates that behavior faithfully:
+
+```c
+// libgit2
+
+int git_old_style(void)
+{
+    if (git_setup_operation() < 0 ||
+        git_process_operation() < 0)
+        return -1;
+    
+    return 0;
+}
+```
+```swift
+// libgit2.swift
+
+func newStyle() throws(GitError) {
+    do {
+        try setupOperation()
+        try processOperation()
+    }
+    catch {
+        throw .generic
+    }
+}
+```
+
+> **Note:** The original code usually checks `git_something() < 0`, which would discard all positive error codes. This rewrite assumes they're always negative because that's the common case, making special exceptions when that's false. Because of that, there are no checks for whether the error code is negative; the thrown error is just rethrown.
+
 
 
 #### Side-channel errors
@@ -137,8 +170,21 @@ For example, because libgit2 is platform-agnostic, it comes with nearly everythi
 
 Swift, however, has dynamic-length arrays built-in! So no such error would be thrown. So any functions where that's the only reason it would return an error code, instead always succeed!
 
+There's also places where libgit2 throws errors when an argument passed in is `nil` but it shouldn't be (`GIT_ASSERT_ARG` etc.). Swift can guarantee at compile-time that such arguments are non-`nil`, so those errors are eliminated as well. 
+
 That also means that libtit2.swift can handle some edge cases libgit2 can't, since it won't fail to handle operations which stack more items into these arrays.
 
+
+##### Intentionally ignored error states
+
+###### Path lengths
+A lot of code in libgit2 concerns itself with ensuring file path strings are short enough to fit into memory, usually around copying them into new variables.
+
+libgit2.swift intentionally ignores that error state, because it assumes that if it is running within a condition where a file path cannot fit into memory, that's a problem which is out-of-scope of Git to be handling.
+
+Additionally, Swift's copy-on-write runtime feature makes this a notably less likely condition than libgit2's simpler C-style string handling.
+
+Instead of returning an error code, the program will behave however the Swift runtime/stdlib decides is best (likely crashing with an OOM error of some sort).
 
 
 ### Nullability
@@ -161,7 +207,7 @@ This package also chooses _only_ CommonCrypto as the hash creation backend for a
 
 
 
-### Primitives
+### Primitive types
 
 The following describes how primitives appear in libgit2, and how libgit2.swift translates them in situations where other types don't better describe the value (e.g. an `enum`, `GitError`, etc.):
 
@@ -186,7 +232,7 @@ The following describes how primitives appear in libgit2, and how libgit2.swift 
 ### Strings
 
 libgit2.swift uses the Swift native `String` type wherever the concpet of a text string exists in libgit.
-Anywhere there's' a `char *`, a `git_str`, or any other text string concept, is replaced with `String`.
+Anywhere libgit uses a `char *`, a `git_str`, or any other text string concept, libgit2.swift uses `String`.
 
 That means that all strings throughout this library support full Unicode and all the other fancy things Swift strings support.
 

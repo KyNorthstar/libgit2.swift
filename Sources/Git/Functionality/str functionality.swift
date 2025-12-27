@@ -10,8 +10,12 @@
 
 import Foundation
 
+
+
 /// Git's string out-of-memory mark
 public let git_str__oom = "\u{0}"
+
+
 
 @available(*, deprecated, renamed: "nil", message: "You should only have to nilify the String and the Swift runtime will take care of the rest.")
 @inline(__always)
@@ -35,10 +39,8 @@ private func ENSURE_SIZE(string: inout String, targetSize: Int) throws(GitError)
         do {
             try string.resize(to: targetSize)
         }
-        catch where error.code != nil
-                 && error.kind == nil
-        {
-            throw .init(code: .__generic)
+        catch where error.hasCodeButNotKind {
+            throw .generic
         }
         catch {
             return
@@ -237,7 +239,7 @@ public extension String {
      * - Throws: on allocation failure
      */
     mutating func resize(to target_size: Int) throws(GitError) {
-        try resize(to: target_size)
+        try resize(to: target_size, markAsOutOfMemoryIfFailed: false)
     }
     
     
@@ -254,7 +256,7 @@ public extension String {
     ///   - markAsOutOfMemoryIfFailed: _optional_ - When `true`, then if this ever fails to reserve the capacity you request, it sets this string to the Out-Of-Memory string and throws an error.
     ///                                Otherwise, when `false`, this won't change the string but would still throw an error.
     ///                                Defaults to `false`.
-    mutating func resize(to target_size: size_t, markAsOutOfMemoryIfFailed: Bool = false) throws(GitError) {
+    mutating func resize(to target_size: size_t, markAsOutOfMemoryIfFailed: Bool) throws(GitError) {
         
         let target_size = target_size.nonZeroOrNil ?? self.count
         
@@ -301,8 +303,8 @@ public extension String {
 
 
 
-public func git_str_sets(buf: inout String, string: String?) throws(GitError) {
-    try git_str_set(buffer: &buf, source: string, length: string?.count ?? 0)
+public func git_str_sets(buffer: inout String, source: String?) throws(GitError) {
+    try git_str_set(buffer: &buffer, source: source, length: source?.count ?? 0)
 }
 
 
@@ -317,7 +319,7 @@ public func git_str_set(buffer buf: inout String, source data: String?, length l
     if data != buf {
         (alloclen, _) = len.addingReportingOverflow(1)
         try ENSURE_SIZE(string: &buf, targetSize: alloclen)
-        buf = data // memmove(buf, data, len);
+        buf = data
     }
     
     return
@@ -349,6 +351,31 @@ public func git_str_set(buffer buf: inout String, source data: String?, length l
 
 
 
+public extension String {
+    /// Test if there have been any reallocation failures with this `String`.
+    ///
+    /// It's possible that a function that writes to a `String` can fail due to memory allocation issues.  If one fails, the `String` will be marked with an OOM error and further calls to modify the string buffer will fail.
+    /// Check ``ranOutOfMemory`` at the end of your operations and it will return `true` if you ran out of memory at any point with that string buffer.
+    var ranOutOfMemory: Bool {
+        self == git_str__oom
+    }
+    
+    
+    /// This ensures that this string has a trailing forward-slash (`"/"`) character at the end of it.
+    /// If this already has such a slash at the end, this function makes no changes.
+    ///
+    /// - Attention: This is only meant to work on file paths. Behavior is not guaranteed on other strings
+    mutating func ensureTrailingSlash() {
+        if !isEmpty,
+           last != "/"
+        {
+            self += "/"
+        }
+    }
+}
+
+
+
 // MARK: - Migration
 
 @available(*, unavailable, renamed: "String()")
@@ -369,12 +396,14 @@ public func git_str_join(_: inout git_str?, _: CChar, _: CharStar, _: CharStar) 
 
 @available(*, unavailable, renamed: "String.init(joiningPath:withPathComponent:)")
 public func git_str_joinpath(_: inout git_str?, _: CharStar, _: CharStar) -> CInt { fatalError() }
+@available(*, unavailable, renamed: "String.init(joiningPath:withPathComponent:)")
+public func git_str_joinpath(_: String, _: String) throws(GitError) -> String { fatalError() }
 
 @available(*, unavailable, message: "This is equivalent to `.removeAll(keepingCapacity: true)``")
 public func git_str_clear(_: inout git_str?) -> CInt { fatalError() }
 
 @available(*, unavailable, renamed: "String.count", message: "just use .count")
-public func git_str_len(_: inout git_str?) -> size_t { fatalError() }
+public func git_str_len(_: git_str?) -> size_t { fatalError() }
 
 
 public extension String {
@@ -382,7 +411,7 @@ public extension String {
     init(checking _: String, expressionLabel _: String = #function) throws(GitError) { fatalError() }
     
     
-    @available(*, unavailable, renamed: "git_str_try_grow(target_size:)")
+    @available(*, unavailable, renamed: "resize(to:)")
     func git_str_try_grow(target_size: size_t, mark_oom: Bool) { fatalError() }
 }
 
@@ -392,3 +421,19 @@ public func git_str_try_grow(_ buf: inout git_str, _ target_size: size_t, _ mark
 
 @available(*, unavailable, renamed: "buf.resize(to:)")
 public func git_str_grow(_ buf: inout git_str, _: size_t) -> CInt { fatalError() }
+
+@available(*, unavailable, message: "This function just converted a git_str to a char*. Since libgit2.swift uses String for both of those, this is unnecessary.")
+public func git_str_detach(_: inout git_str?) -> CharStar? { fatalError() }
+
+@available(*, unavailable, message: "Use `String.append` or `+=` instead")
+public func git_str_putc(_: inout git_str, _: CChar) -> CInt { fatalError() }
+//@available(*, unavailable, message: "Use `String.append` or `+=` instead")
+//public func git_str_putc(_: inout String, _: Character) throws(GitError) { fatalError() }
+
+@available(*, unavailable, renamed: "string.ranOutOfMemory")
+public func git_str_oom(_: git_str) -> Bool { fatalError() }
+
+@available(*, unavailable, renamed: "string.ensureTrailingSlash()")
+public func git_fs_path_to_dir(_: inout git_str) -> CInt { fatalError() }
+//@available(*, unavailable, renamed: "string.ensureTrailingSlash()")
+//public func git_fs_path_to_dir(_: inout String) throws(GitError) { fatalError() }

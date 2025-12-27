@@ -9,7 +9,7 @@
 //
 
 
-@available(*, unavailable, renamed: "String", message: "Just use String lol")
+@available(*, unavailable, renamed: "String", message: "This was a Git implementation of a string type, so libgit2.swift uses Swift's builtin String type to represent it")
 public typealias git_str = String
 
 

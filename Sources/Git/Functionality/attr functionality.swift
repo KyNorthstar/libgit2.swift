@@ -17,7 +17,7 @@ public var GIT_ATTR_OPTIONS_INIT: git_attr_options { .init(version: GIT_ATTR_OPT
 
 
 
-internal func collect_attr_files(
+private func collect_attr_files(
     repo: Repository,
     session attr_session: git_attr_session,
     options opts: git_attr_options,
@@ -26,11 +26,17 @@ internal func collect_attr_files(
 throws(GitError)
 {
     var error: GitError? = nil
-    var dir = String()
+    var dir: String?
     var attrfile = String()
     let workdir = repo.nonBareWorkdir
-    let info = attr_walk_up_info()
-
+    var info = attr_walk_up_info()
+    
+    
+    func cleanup(error: GitError?) throws(GitError) {
+        if let error { throw error }
+    }
+    
+    
     try assert(expr: !git_fs_path_is_absolute(path: path))
     
     do {
@@ -41,32 +47,40 @@ throws(GitError)
         throw error
     }
     catch {}
-
-    /* Resolve path in a non-bare repo */
-    if let workdir {
-        dir = try git_repository_workdir_path(repo: repo, path: path)
-        dir = try git_fs_path_find_dir(dir: dir)
+    
+    do {
+        /* Resolve path in a non-bare repo */
+        if nil != workdir {
+            dir = git_fs_path_find_dir(dir: try git_repository_workdir_path(repo: repo, path: path))
+        }
+        else {
+            dir = try git_fs_path_dirname_r(path: path)
+        }
     }
-    else {
-        error = git_fs_path_dirname_r(&dir, path);
+    catch {
+        return try cleanup(error: error)
     }
-
-    if (error < 0)
-        goto cleanup;
-
+    
     /* in precedence order highest to lowest:
      * - $GIT_DIR/info/attributes
      * - path components with .gitattributes
      * - config core.attributesfile
      * - $GIT_PREFIX/etc/gitattributes
      */
-
-    if ((error = git_repository__item_path(&attrfile, repo, GIT_REPOSITORY_ITEM_INFO)) < 0 ||
-        (error = push_attr_file(repo, attr_session, files, attrfile.ptr, GIT_ATTR_FILE_INREPO)) < 0) {
-        if (error != GIT_ENOTFOUND)
-            goto cleanup;
+    
+    try handleErrorsWithCodesButNotKinds { () throws(GitError) -> Void in
+        attrfile = try repo.git_repository__item_path(item: .info)
     }
-
+    catch: { (error: GitError) throws(GitError) -> Void in
+        try handleErrorsWithCodesButNotKinds { () throws(GitError) -> Void in
+            repo.push_attr_file(attr_session, files, attrfile.ptr, GIT_ATTR_FILE_INREPO)
+        }
+        catch: { (error: GitError) throws(GitError) -> Void in
+            return try cleanup(error: error)
+        }
+    }
+    
+    
     info.repo = repo;
     info.attr_session = attr_session;
     info.opts = opts;
@@ -97,14 +111,6 @@ throws(GitError)
         else if (error == GIT_ENOTFOUND)
             error = 0;
     }
-
- cleanup:
-    if (error < 0)
-        release_attr_files(files);
-    git_str_dispose(&attrfile);
-    git_str_dispose(&dir);
-
-    return error;
 }
 
 
@@ -131,10 +137,9 @@ throws(GitError)
     }
     
     do {
-        try git_attr_cache__init(repo)
+        try git_attr_cache__init(repo: repo)
     }
-    catch where error.code != nil
-             && error.kind == nil {
+    catch where error.hasCodeButNotKind {
         throw error
     }
     catch {}
@@ -196,9 +201,56 @@ throws(GitError)
     if (attr_session)
         attr_session->init_setup = 1;
 
-out:
-    git_str_dispose(&system);
-    git_str_dispose(&info);
+    func out(error: GitError?) throws(GitError) {
+        if let error { throw error }
+    }
+}
 
-    return error;
+
+
+// MARK: - Private functionality
+
+@available(*, unavailable, message: "Swift automatically manages memory")
+private func release_attr_files<T: Sendable>(_: inout SelfSortingArray<T>) { fatalError() }
+
+
+
+private extension Repository {
+    func push_attr_source(
+        attr_session: git_attr_session,
+        list: SelfSortingArray<Never>,
+        source: git_attr_file_source,
+        allow_macros: Bool)
+    throws(GitError) {
+        var file: git_attr_file? = nil
+        
+        try throwOnlyForErrorsWithCodesButNotKinds {
+            file = try self.git_attr_cache__get(attr_session,
+                                        source,
+                                        git_attr_file__parse_buffer,
+                                        allow_macros);
+        }
+        
+        if (file != NULL) {
+            if ((error = git_vector_insert(list, file)) < 0)
+                git_attr_file__free(file);
+        }
+        
+        return error;
+    }
+}
+
+
+
+// MARK: - Migration
+
+@available(*, unavailable, renamed: "repo.push_attr_source(attr_session:list:source:allow_macros:)")
+private func push_attr_source(
+    repo: git_repository,
+    attr_session: git_attr_session,
+    list: SelfSortingArray<Never>,
+    source: git_attr_file_source,
+    allow_macros: Bool)
+throws(GitError) {
+    fatalError()
 }

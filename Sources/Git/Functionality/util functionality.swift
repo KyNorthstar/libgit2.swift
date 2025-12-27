@@ -65,6 +65,10 @@ public func _getEnv(name: String) throws(GitError) -> String {
 
 
 
+extern void git__tsort(void **dst, size_t size, git__tsort_cmp cmp);
+
+
+
 public extension Bool {
     /// Parse a string value as a boolean, just like libgit does, just like Core Git does.
     ///
@@ -136,7 +140,7 @@ public extension FixedWidthInteger {
         
         guard !trimmedNumberString.isEmpty else {
             return ParseResult(parsed: .failure(.couldNotParseStringToInteger()),
-                               parseRange: untrimmedNumberString.indexRange)
+                               parseRange: untrimmedNumberString.indexClosedRange)
         }
         
         
@@ -158,7 +162,7 @@ public extension FixedWidthInteger {
         
         @inline(__always)
         func parse(base: Int, sign: Substring?, digits: Substring) -> ParseResult {
-            let range = (sign?.startIndex ?? digits.startIndex)..<digits.endIndex
+            let range = (sign?.startIndex ?? digits.startIndex) ... digits.index(before: digits.endIndex)
             
             if let number = Self.init((sign ?? "") + digits, radix: base) {
                 return ParseResult(parsed: .success(number), parseRange: range)
@@ -181,7 +185,7 @@ public extension FixedWidthInteger {
         guard let m = match(/(?<sign>[+-])?(?<baseIndicator>0[Xbox]?)?(?<digits>[A-Za-z0-9]+)/) else {
             
             return ParseResult(parsed: .failure(.couldNotParseStringToInteger()),
-                               parseRange: trimmedNumberString.startIndex ..< lastAlphanumericIndex)
+                               parseRange: trimmedNumberString.startIndex ... lastAlphanumericIndex)
         }
         
         (_, sign, baseIndicator, digits) = m
@@ -190,7 +194,7 @@ public extension FixedWidthInteger {
            0 != base {
             guard base < 32 else {
                 return ParseResult(parsed: .failure(.couldNotParseStringToInteger()),
-                                   parseRange: trimmedNumberString.startIndex ..< lastAlphanumericIndex)
+                                   parseRange: trimmedNumberString.startIndex ... lastAlphanumericIndex)
             }
             
             return parse(base: .init(base), sign: sign, digits: digits)
@@ -217,7 +221,7 @@ public extension FixedWidthInteger {
     
     
     
-    typealias ParseResult = (parsed: Result<Self, GitError>, parseRange: Range<String.Index>)
+    typealias ParseResult = (parsed: Result<Self, GitError>, parseRange: ClosedRange<String.Index>)
 }
 
 

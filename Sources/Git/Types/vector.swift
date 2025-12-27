@@ -61,11 +61,12 @@ public struct SelfSortingArray<Element: AnyTypeProtocol>: AnyStructProtocol {
     }
     
     
-    
     public typealias Contents = [Element]
 }
 
 
+
+// MARK: - Conformance
 
 extension SelfSortingArray: ExpressibleByArrayLiteral {
     public init(arrayLiteral elements: Element...) {
@@ -94,7 +95,8 @@ extension SelfSortingArray: Collection {
     
     
     public subscript(position: Contents.Index) -> Element {
-        contents[position]
+        get { contents[position] }
+        set { contents[position] = newValue }
     }
     
     
@@ -110,7 +112,19 @@ extension SelfSortingArray: Collection {
 
 
 
-// MARK: - Supporting types
+extension SelfSortingArray: RandomAccessCollection {}
+
+
+
+extension SelfSortingArray: RangeReplaceableCollection {
+    public mutating func replaceSubrange<C>(_ subrange: Range<Int>, with newElements: C) where C: Collection, C.Element == Element {
+        contents.replaceSubrange(subrange, with: newElements)
+    }
+}
+
+
+
+// MARK: - Auxiliary types
 
 public extension SelfSortingArray {
     enum Flags: CUnsignedInt, AutoOptionSet, AnyStructProtocol {
@@ -119,6 +133,30 @@ public extension SelfSortingArray {
         
         // Analogous to `GIT_VECTOR_FLAG_MAX`
         static var max: RawValue { __Flags_max } // 1u << 2
+    }
+}
+
+
+
+infix operator <~> : ComparisonPrecedence
+
+
+
+/// Sugar for creating a comparison result by comparing two comparable values
+///
+/// - Parameters:
+///   - lhs: The left value to compare
+///   - rhs: The right value to compare
+/// - Returns: The result of comparing them
+public func <~> <T: Comparable> (lhs: T, rhs: T) -> ComparisonResult {
+    if lhs < rhs {
+        .orderedAscending
+    }
+    else if lhs == rhs {
+        .orderedSame
+    }
+    else {
+        .orderedDescending
     }
 }
 
@@ -154,9 +192,11 @@ public extension git_vector {
 public func git_vector_init(_: inout git_vector<Any>, _: size_t, _: git_vector_cmp<Any>) -> CInt { fatalError() }
 
 
+@available(*, unavailable, renamed: "SelfSortingArray.Flags.sorted")
+public var GIT_VECTOR_SORTED: SelfSortingArray<Never>.Flags { fatalError() }
 
-@available(*, unavailable, renamed: "SelfSortingrray.Flags.sorted")
-public var GIT_VECTOR_SORTED: CUnsignedInt { fatalError() }
+@available(*, unavailable, renamed: "SelfSortingArray.Flags.max")
+public var GIT_VECTOR_FLAG_MAX: SelfSortingArray<Never>.Flags { fatalError() }
 
-@available(*, unavailable, renamed: "SelfSortingrray.Flags.max")
-public var GIT_VECTOR_FLAG_MAX: CUnsignedInt { fatalError() }
+
+

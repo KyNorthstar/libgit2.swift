@@ -12,17 +12,12 @@ import Foundation
 
 
 
-public struct FilesystemPathRejectionFlags: OptionSet {
-    public let rawValue: Int
-    public init(rawValue: Int) {
-        self.rawValue = rawValue
-    }
+public extension FilesystemPathRejectionFlags {
     
-    
-    static let dotGit        = FilesystemPathRejectionFlags(rawValue: FilesystemPathReject.max.rawValue << 1)
-    static let dotGitLiteral = FilesystemPathRejectionFlags(rawValue: FilesystemPathReject.max.rawValue << 2)
-    static let dotGitHFS     = FilesystemPathRejectionFlags(rawValue: FilesystemPathReject.max.rawValue << 3)
-    static let dotGitNTFS    = FilesystemPathRejectionFlags(rawValue: FilesystemPathReject.max.rawValue << 4)
+    static let dotGit        = FilesystemPathRejectionFlags(rawValue: FilesystemPathRejectionFlags.max.rawValue << 1)
+    static let dotGitLiteral = FilesystemPathRejectionFlags(rawValue: FilesystemPathRejectionFlags.max.rawValue << 2)
+    static let dotGitHFS     = FilesystemPathRejectionFlags(rawValue: FilesystemPathRejectionFlags.max.rawValue << 3)
+    static let dotGitNTFS    = FilesystemPathRejectionFlags(rawValue: FilesystemPathRejectionFlags.max.rawValue << 4)
 }
 
 

@@ -14,8 +14,8 @@ import Foundation
 
 public struct Config: AnyStructProtocol {
     public var refCount: RefCount
-    public var readers: [AnyTypeProtocol]
-    public var writers: [AnyTypeProtocol]
+    public var readers: SelfSortingArray<AnyTypeProtocol>
+    public var writers: SelfSortingArray<AnyTypeProtocol>
 }
 
 
@@ -56,7 +56,7 @@ public extension git_configmap_t {
 public struct git_configmap: AnyStructProtocol {
     public var type: git_configmap_t
     public let str_match: String?
-    public let map_value: Int
+    public let map_value: ConfigmapValue
 }
 
 
@@ -150,15 +150,15 @@ public struct git_config_entry: AnyStructProtocol {
  * access a configuration file
  */
 public protocol git_config_backend: AnyProtocolProtocol {
-    var version: CUnsignedInt { get }
+    var version: UInt { get }
     
     /** True if this backend is for a snapshot */
     var readonly: Bool { get }
     
-    var cfg: Config { get }
+    var cfg: Config { get set }
 
     /** Open means open the file/database and parse if necessary */
-    func open(level: git_config_level_t, repo: Repository) throws(GitError) -> Void
+    func open(level: git_config_level_t, repo: Repository?) throws(GitError) -> Void
     func get(key: String?) throws(GitError) -> git_config_entry
     func set(key: String?, value: String) throws(GitError) -> Void
     func set_multivar(name: String?, regexp: String, value: String) throws(GitError) -> Void
@@ -270,7 +270,7 @@ public var GIT_CONFIG_HIGHEST_LEVEL: git_config_level_t { fatalError() }
 public extension git_config_backend {
     
     @available(*, unavailable, message: "The Swift version of this function assumes the `git_config_backend` parameter is `self`")
-    func open(_: git_config_backend, _ level: git_config_level_t, _ repo: Repository) throws(GitError) -> Void { fatalError() }
+    func open(_: git_config_backend, _ level: git_config_level_t, _ repo: Repository?) throws(GitError) -> Void { fatalError() }
     
     @available(*, unavailable, message: "The Swift version of this function assumes the `git_config_backend` parameter is `self`")
     func get(_: git_config_backend, _ key: String) throws(GitError) -> git_config_entry { fatalError() }

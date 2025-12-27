@@ -12,56 +12,56 @@ import Foundation
 
 
 
-/**
- * Configuration map cache
- *
- * Efficient access to the most used config variables of a repository.
- * The cache is cleared every time the config backend is replaced.
- */
-public func git_repository__configmap_lookup(repo: Repository, item: ConfigmapItem) async throws(GitError) -> CInt
-{
-    var value = intptr_t(await Volatile.run { repo.configmapCache[item.rawValue].rawValue })
-    
-    var out = value
-    
-    if value == git_configmap_value.GIT_CONFIGMAP_NOT_CACHED.rawValue {
-        var config = repo.config
-        let oldval = value
+public extension Repository {
+    /**
+     * Configuration map cache
+     *
+     * Efficient access to the most used config variables of a repository.
+     * The cache is cleared every time the config backend is replaced.
+     */
+    mutating func configmap_lookup(item: ConfigmapItem) async throws(GitError) -> ConfigmapValue? {
+        var value = self.configmapCache[item]
+        var out = value
         
-        repo.config
-        try git_config__configmap_lookup(&out, config, item)
+        if value == .GIT_CONFIGMAP_NOT_CACHED {
+            if let config {
+                out = ConfigmapValue(rawValue: try config.git_config__configmap_lookup(item: item))
+            }
+            
+            await Volatile.run {
+                if value == self.configmapCache[item] {
+                    self.configmapCache[item] = out
+                }
+            }
+        }
         
-        value = out
-        git_atomic_compare_and_swap(&repo.configmap_cache[.init(item)], oldval, value)
+        return out
+        
+        
+        // The above code translates this original C code:
+        //
+        // int git_repository__configmap_lookup(int *out, git_repository *repo, git_configmap_item item)
+        // {
+        //     intptr_t value = (intptr_t)git_atomic_load(repo->configmap_cache[(int)item]);
+        //
+        //     *out = (int)value;
+        //
+        //     if (value == GIT_CONFIGMAP_NOT_CACHED) {
+        //         git_config *config;
+        //         intptr_t oldval = value;
+        //         int error;
+        //
+        //         if ((error = git_repository_config__weakptr(&config, repo)) < 0 ||
+        //             (error = git_config__configmap_lookup(out, config, item)) < 0)
+        //             return error;
+        //
+        //         value = *out;
+        //         git_atomic_compare_and_swap(&repo->configmap_cache[(int)item], (void *)oldval, (void *)value);
+        //     }
+        //
+        //     return 0;
+        // }
     }
-    else {
-        return value
-    }
-    
-    
-    // The above code translates this original C code:
-    //
-    // int git_repository__configmap_lookup(int *out, git_repository *repo, git_configmap_item item)
-    // {
-    //     intptr_t value = (intptr_t)git_atomic_load(repo->configmap_cache[(int)item]);
-    //
-    //     *out = (int)value;
-    //
-    //     if (value == GIT_CONFIGMAP_NOT_CACHED) {
-    //         git_config *config;
-    //         intptr_t oldval = value;
-    //         int error;
-    //
-    //         if ((error = git_repository_config__weakptr(&config, repo)) < 0 ||
-    //             (error = git_config__configmap_lookup(out, config, item)) < 0)
-    //             return error;
-    //
-    //         value = *out;
-    //         git_atomic_compare_and_swap(&repo->configmap_cache[(int)item], (void *)oldval, (void *)value);
-    //     }
-    //
-    //     return 0;
-    // }
 }
 
 //void git_repository__configmap_lookup_cache_clear(git_repository *repo);
@@ -240,15 +240,8 @@ private func config_path_system(backup: String? = nil, use_env: Bool) throws(Git
  * @param repo the repository
  * @return 0, or an error code
  */
-public func git_repository_config_snapshot(out startingValue: git_config? = nil, repo: git_repository) -> git_config
-{
-    var error: GitError?
-    var `weak`: git_config
-
-    if ((error = git_repository_config__weakptr(&weak, repo)) < 0)
-        return error;
-
-    return git_config_snapshot(out, weak);
+public func git_repository_config_snapshot(startingValue out: git_config? = nil, repo: git_repository) -> git_config {
+    git_config_snapshot(out, repo.config)
 }
 
 
@@ -277,7 +270,136 @@ public extension Repository {
 
 
 
+public extension Repository {
+    func git_repository__item_path(item: Item) throws(GitError) -> String {
+        @available(*, unavailable, renamed: "self")
+        var repo: Self { self }
+        
+        guard
+            let mapped = items[item],
+            let parent = try resolved_parent_path(item: mapped.parent, fallback: mapped.fallback)
+        else {
+            throw GitError(message: "path cannot exist in repository", kind: .invalid, code: .objectNotFound)
+        }
+        
+        var out = parent
+        
+        if let name = mapped.name {
+            out = String(joiningPath: parent, withPathComponent: name)
+        }
+        
+        if mapped.isDirectory {
+            out.ensureTrailingSlash()
+        }
+        
+        return out
+    }
+    
+    
+    
+    @inline(__always)
+    func push_attr_file(
+        attr_session: git_attr_session,
+        list: SelfSortingArray<Never>,
+        base: String,
+        filename: String)
+    throws(GitError)
+    {
+        var source = git_attr_file_source(type: .file, base: base, filename: filename)
+        return self.push_attr_source(attr_session, list, &source, true);
+    }
+
+    
+    
+    /// A fancy indirect way of accessing three of the repo's fields. Use `??` instead if you can.
+    ///
+    /// Here's the mapping of items to fields that you should use directly instead of this function:
+    /// - `Item.gitDir` — `self.gitdir`
+    /// - `Item.workDir` — `self.workingDirectory`
+    /// - `Item.commonDir` — `self.commondir`
+    ///
+    /// ### Example
+    /// If you call `resolved_parent_path(item: .workDir, fallback: .commonDir)` on a bare repo (where there is no working directory), this recursively acts like you called `resolved_parent_path(item: .commonDir, fallback: nil)` and returns the common directory.
+    ///
+    /// That behavior is identical to `workingDirectory ?? commondir`, so you're encouraged to do that instead because it's much simpler and faster.
+    ///
+    ///
+    /// - Attention:The libgit2 C version of this didn't return any error codes if a problem occurred, instead silently setting a side-channel error and returning `NULL`. If you want to replicate that behavior, use a mechanism which discontinues error propagation, like `try?`
+    ///
+    /// - Parameters:
+    ///   - item:     Represents a field to retrieve. Must be either `.gitDir`, `.workDir`, or `.commonDir`.
+    ///   - fallback: The field to retrieve if `item` couldn't be found. Must be either `.gitDir`, `.workDir`, or `.commonDir`.
+    ///
+    /// - Returns: The path to the parent directory specified by `item`, or if that couldn't be found, the one specified by `fallback`.
+    ///
+    /// - Throws: An error if `item` (or, if that couldn't be found, `fallback`) are anything other than `.gitDir`, `.workDir`, or `.commonDir`.
+    func resolved_parent_path(item: Repository.Item, fallback: Repository.Item?) throws(GitError) -> String? {
+        guard let parent = switch item {
+            case .gitDir:    gitdir
+            case .workDir:   workingDirectory
+            case .commonDir: commondir
+            default: throw GitError(message: "invalid item directory", kind: .invalid)
+        }
+        else {
+            if let fallback {
+                return try resolved_parent_path(item: fallback, fallback: nil)
+            }
+            else {
+                return nil
+            }
+        }
+        
+        return parent
+    }
+    
+    
+    /// The path of the working directory for this repository, if it exists.
+    /// If the repository is bare, this will always be `null`.
+    var workingDirectory: String? {
+        isBare
+            ? nil
+            : rawWorkdir
+    }
+}
+
+
+
+// MARK: - private
+
+private let items: [Repository.Item : __UnnamedItemCollectionBody] = [
+    .gitDir:         (parent: .gitDir,    fallback: nil,      name: nil,               isDirectory: true),
+    .workDir:        (parent: .workDir,   fallback: nil,      name: nil,               isDirectory: true),
+    .commonDir:      (parent: .commonDir, fallback: nil,      name: nil,               isDirectory: true),
+    .index:          (parent: .gitDir,    fallback: nil,      name: "index",           isDirectory: false),
+    .objects:        (parent: .commonDir, fallback: .gitDir,  name: "objects",         isDirectory: true),
+    .refs:           (parent: .commonDir, fallback: .gitDir,  name: "refs",            isDirectory: true),
+    .packedRefs:     (parent: .commonDir, fallback: .gitDir,  name: "packed-refs",     isDirectory: false),
+    .remotes:        (parent: .commonDir, fallback: .gitDir,  name: "remotes",         isDirectory: true),
+    .config:         (parent: .commonDir, fallback: .gitDir,  name: "config",          isDirectory: false),
+    .info:           (parent: .commonDir, fallback: .gitDir,  name: "info",            isDirectory: true),
+    .hooks:          (parent: .commonDir, fallback: .gitDir,  name: "hooks",           isDirectory: true),
+    .logs:           (parent: .commonDir, fallback: .gitDir,  name: "logs",            isDirectory: true),
+    .modules:        (parent: .gitDir,    fallback: nil,      name: "modules",         isDirectory: true),
+    .worktrees:      (parent: .commonDir, fallback: .gitDir,  name: "worktrees",       isDirectory: true),
+    .worktreeConfig: (parent: .gitDir,    fallback: .gitDir,  name: "config.worktree", isDirectory: false),
+]
+
+
+
+private typealias __UnnamedItemCollectionBody = (
+    parent: Repository.Item,
+    fallback: Repository.Item?,
+    name: String?,
+    isDirectory: Bool,
+)
+
+
+
 // MARK: - Migration
+
+@available(*, unavailable, renamed: "repo.configmap_lookup(item:)", message: "The Swift version is an extension member of Repository, returns a `ConfigmapValue` instead of taking an inout pointer, and throws an error instead of returning an error code.")
+public func git_repository__configmap_lookup(_: inout CInt, _: inout git_repository, _: git_configmap_item) -> CInt { fatalError() }
+
 
 /// Check if the given repository is a linked work tree
 ///
@@ -310,7 +432,7 @@ public func git_repository_is_bare(repo: Repository) -> Bool {
 public func git_repository_attr_cache(_: git_repository) -> git_attr_cache? { fatalError() }
 
 
-@available(*, unavailable, renamed: "repo.config", message: "Swift doesn't require such manual pointer juggling")
+@available(*, unavailable, renamed: "repo.config", message: "Swift doesn't require such manual pointer juggling. Use `yourVar = repo.config` instead")
 public func git_repository_config__weakptr(_: inout git_config?, _: git_repository) throws(GitError) { fatalError() }
 
 @available(*, unavailable, renamed: "repo.odb", message: "Swift doesn't require such manual pointer juggling.")
@@ -333,3 +455,26 @@ public func git_repository_shallow_grafts__weakptr(_: inout git_grafts?, _: git_
 
 @available(*, unavailable, message: "This now returns a String and throws an error, rather than returning an error code and taking an inout string")
 public func git_repository_workdir_path(_: inout git_str, _: git_repository, _: CharStar) -> CInt { fatalError() }
+
+@available(*, unavailable, renamed: "repo.git_repository__item_path(item:)", message: "The Swift version is an extension member of Repository, returns a String instead of taking an inout string, and throws an error instead of returning an error code.")
+public func git_repository__item_path(_: inout git_str, repo: git_repository, item: git_repository_item_t) -> CInt { fatalError() }
+
+@available(*, unavailable, renamed: "repo.resolved_parent_path(item:fallback:)", message: "The Swift version is an extension member of Repository.")
+public func resolved_parent_path(_: git_repository, _: git_repository_item_t, _: git_repository_item_t) -> CharStar { fatalError() }
+
+@available(*, unavailable, renamed: "repo.gitdir", message: """
+    Just access the `gitdir` field directly.
+    
+    This was necessary in libgit2 because checks had to be made and directly accessing fields in C isn't always safe. Swift guarantees safety and doesn't require the checks that indirection provides.
+    """)
+public func git_repository_path(_: git_repository) -> CharStar { fatalError() }
+
+@available(*, unavailable, renamed: "repo.workingDirectory")
+public func git_repository_workdir(_: git_repository) -> CharStar? { fatalError() }
+
+@available(*, unavailable, renamed: "repo.commondir", message: """
+    Just access the `commondir` field directly.
+    
+    This was necessary in libgit2 because checks had to be made and directly accessing fields in C isn't always safe. Swift guarantees safety and doesn't require the checks that indirection provides.
+    """)
+public func git_repository_commondir(_: git_repository) -> CharStar { fatalError() }

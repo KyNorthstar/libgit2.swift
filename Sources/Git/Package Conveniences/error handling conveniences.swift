@@ -34,10 +34,9 @@ import Foundation
 /// - Parameters:
 ///   - closure: The code which might error out
 ///   - handler: Handles when the `closure` code errors out with a `.code`, but not with a `.kind`
-package func handleErrorsWithCodesButNotKinds(
+internal func handleErrorsWithCodesButNotKinds(
     do closure: () throws(GitError) -> Void,
-    catch handler: (GitError) throws(GitError) -> Void
-)
+    catch handler: (GitError) throws(GitError) -> Void)
 throws(GitError) {
     do {
         try closure()
@@ -47,6 +46,25 @@ throws(GitError) {
     }
     catch {}
 }
+
+
+internal func convertErrorsWithCodesButNotKinds(
+    to replacementError: @autoclosure () -> GitError,
+    do closure: () throws(GitError) -> Void)
+throws(GitError) {
+    try handleErrorsWithCodesButNotKinds(do: closure, catch: { (_:GitError) throws(GitError) -> Void in
+        throw replacementError()
+    })
+}
+
+
+
+
+internal func throwOnlyForErrorsWithCodesButNotKinds(do closure: () throws(GitError) -> Void)
+throws(GitError) {
+    try handleErrorsWithCodesButNotKinds(do: closure, catch: { _ in })
+}
+    
 
 
 

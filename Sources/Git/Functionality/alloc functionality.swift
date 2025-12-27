@@ -13,6 +13,7 @@ import Foundation
 
 
 private extension UnsafeMutableRawPointer {
+    @available(*, unavailable, renamed: "assumingMemoryBound(to:)", message: "This already exists, ya stoner!")
     func typed<Value>() -> UnsafeMutablePointer<Value> {
         .init(OpaquePointer(self))
     }

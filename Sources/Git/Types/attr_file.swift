@@ -13,14 +13,12 @@ import Foundation
 
 
 
-public enum git_attr_file_source_t: CInt, AnyEnumProtocol {
-    case GIT_ATTR_FILE_SOURCE_MEMORY = 0
-    case GIT_ATTR_FILE_SOURCE_FILE   = 1
-    case GIT_ATTR_FILE_SOURCE_INDEX  = 2
-    case GIT_ATTR_FILE_SOURCE_HEAD   = 3
-    case GIT_ATTR_FILE_SOURCE_COMMIT = 4
-
-    case GIT_ATTR_FILE_NUM_SOURCES
+public enum git_attr_file_source_t: CInt, AnyEnumProtocol, CaseIterable {
+    case memory = 0
+    case file   = 1
+    case index  = 2
+    case head   = 3
+    case commit = 4
 }
 
 
@@ -129,7 +127,7 @@ throws -> (path: String, rootOffset: Int) {
         root = .rooted(offset: base.count)
     }
     else {
-        try git_str_sets(buf: &joined, string: path)
+        try `git_str_sets(buffer: &joined, string: path)
     }
 
     // Clean up repeated slashes
@@ -291,6 +289,12 @@ throws(GitError) -> git_attr_path
 
 
 
+public typealias git_attr_file_parser = (
+    _ repository: Repository,
+    _ file: git_attr_file,
+    _ data: String,
+    _ allowMacros: Bool
+) throws(GitError) -> Void
 
 
 
@@ -329,3 +333,24 @@ public enum git_dir_flag: CInt, AnyEnumProtocol {
     case GIT_DIR_FLAG_UNKNOWN = -1
 }
 
+
+
+// MARK: - Migration
+
+@available(*, unavailable, renamed: "git_attr_file_source_t.memory")
+public var GIT_ATTR_FILE_SOURCE_MEMORY: git_attr_file_source_t { fatalError() }
+
+@available(*, unavailable, renamed: "git_attr_file_source_t.file")
+public var GIT_ATTR_FILE_SOURCE_FILE: git_attr_file_source_t { fatalError() }
+
+@available(*, unavailable, renamed: "git_attr_file_source_t.index")
+public var GIT_ATTR_FILE_SOURCE_INDEX: git_attr_file_source_t { fatalError() }
+
+@available(*, unavailable, renamed: "git_attr_file_source_t.head")
+public var GIT_ATTR_FILE_SOURCE_HEAD: git_attr_file_source_t { fatalError() }
+
+@available(*, unavailable, renamed: "git_attr_file_source_t.commit")
+public var GIT_ATTR_FILE_SOURCE_COMMIT: git_attr_file_source_t { fatalError() }
+
+@available(*, unavailable, renamed: "git_attr_file_source_t.allCases.count")
+public var GIT_ATTR_FILE_NUM_SOURCES: git_attr_file_source_t { fatalError() }

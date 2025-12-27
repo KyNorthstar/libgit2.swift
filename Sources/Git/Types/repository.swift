@@ -21,12 +21,24 @@ public struct Repository: AnyStructProtocol {
     public var index: Index
     
     public var objects: Cache
-    public weak var attrcache: SafePointer<AttributeCache>?
+    public weak var attrcache: AttributeCache?
     public weak var diffDrivers: SafePointer<DiffDriverRegistry>?
     
     public var gitlink: String
+    
+    /// The path of this repository
+    ///
+    /// This is the path of the `.git` folder for normal repositories, or of the repository itself for bare repositories.
     public var gitdir: String
+    
+    /// The path of the shared common directory for this repository.
+    ///
+    /// If the repository is bare, it is the root directory for the repository.
+    /// If the repository is a worktree, it is the parent repo's `gitdir`.
+    /// Otherwise, it is the `gitdir`.
     public var commondir: String
+    
+    /// Mostly used for internal libgit2 processing. You'd probably best use `workingDirectory` instead
     public var rawWorkdir: String?
     public var namespace: String
     
@@ -50,7 +62,7 @@ public struct Repository: AnyStructProtocol {
     public var attr_session_key: Int32
     
     @Volatile
-    public var configmapCache: [ConfigmapItem]
+    public var configmapCache: [ConfigmapItem : ConfigmapValue]
     public var submoduleCache: StringMap
 };
 
@@ -79,6 +91,11 @@ public enum ConfigmapItem: Int, AnyEnumProtocol {
 
 
 
+//public protocol ConfigmapValue: AnyProtocolProtocol, Codable, LosslessStringConvertible {}
+public typealias ConfigmapValue = git_configmap_value
+
+
+
 /**
  * Configuration map value enumerations
  *
@@ -87,8 +104,8 @@ public enum ConfigmapItem: Int, AnyEnumProtocol {
  * symbolic; make sure that none of them is set to `-1`, since that is
  * the unique identifier for "not cached"
  */
-public struct git_configmap_value: RawRepresentable, AnyStructProtocol {
-    public var rawValue: CInt
+public struct git_configmap_value: AnyStructProtocol, RawRepresentable, Equatable {
+    public var rawValue: Int
     
     public init(rawValue: RawValue) {
         self.rawValue = rawValue
@@ -154,6 +171,31 @@ public extension git_configmap_value {
     static let GIT_FSYNCOBJECTFILES_DEFAULT = Self(rawValue: git_configmap_t.false.rawValue)
     /* core.longpaths */
     static let GIT_LONGPATHS_DEFAULT = Self(rawValue: git_configmap_t.false.rawValue)
+}
+
+
+
+public extension Repository {
+    /**
+     * List of items which belong to the git repository layout
+     */
+    enum Item: Int, AnyEnumProtocol {
+        case gitDir
+        case workDir
+        case commonDir
+        case index
+        case objects
+        case refs
+        case packedRefs
+        case remotes
+        case config
+        case info
+        case hooks
+        case logs
+        case modules
+        case worktrees
+        case worktreeConfig
+    }
 }
 
 
@@ -239,11 +281,55 @@ public extension Repository {
     var shallow_grafts: SafePointer<Grafts>? { fatalError("use shallowGrafts") }
     
     @available(*, unavailable, renamed: "configmapCache")
-    var configmap_cache: [ConfigmapItem] { fatalError("use configmapCache") }
+    var configmap_cache: [ConfigmapItem : ConfigmapValue] { fatalError("use configmapCache") }
     
     @available(*, unavailable, renamed: "submoduleCache")
     var submodule_cache: StringMap { fatalError("use submoduleCache") }
     
     @available(*, unavailable, renamed: "rawWorkdir")
     var workdir: CharStar? { fatalError() }
+}
+
+
+@available(*, unavailable, renamed: "Repository.Item")
+public typealias git_repository_item_t = Repository.Item
+
+@available(*, unavailable, renamed: "Repository.Item.gitDir")
+public var GIT_REPOSITORY_ITEM_GITDIR: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.workDir")
+public var GIT_REPOSITORY_ITEM_WORKDIR: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.commonDir")
+public var GIT_REPOSITORY_ITEM_COMMONDIR: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.index")
+public var GIT_REPOSITORY_ITEM_INDEX: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.objects")
+public var GIT_REPOSITORY_ITEM_OBJECTS: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.refs")
+public var GIT_REPOSITORY_ITEM_REFS: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.packedRefs")
+public var GIT_REPOSITORY_ITEM_PACKED_REFS: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.remotes")
+public var GIT_REPOSITORY_ITEM_REMOTES: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.config")
+public var GIT_REPOSITORY_ITEM_CONFIG: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.info")
+public var GIT_REPOSITORY_ITEM_INFO: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.hooks")
+public var GIT_REPOSITORY_ITEM_HOOKS: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.logs")
+public var GIT_REPOSITORY_ITEM_LOGS: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.modules")
+public var GIT_REPOSITORY_ITEM_MODULES: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.worktrees")
+public var GIT_REPOSITORY_ITEM_WORKTREES: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "Repository.Item.worktreeConfig")
+public var GIT_REPOSITORY_ITEM_WORKTREE_CONFIG: Repository.Item { fatalError() }
+@available(*, unavailable, renamed: "nil", message: "Instead of using a special value to represent 'invalid case', libgit2.swift uses Swift's robust Optional system.")
+public var GIT_REPOSITORY_ITEM__LAST: Repository.Item { fatalError() }
+
+
+@available(*, unavailable)
+public extension Repository.Item {
+    @available(*, unavailable, renamed: "none", message: "Instead of using a special value to represent 'invalid case', libgit2.swift uses Swift's robust Optional system.")
+    static var last: Self { fatalError() }
 }

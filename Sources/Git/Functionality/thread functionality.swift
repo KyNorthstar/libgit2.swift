@@ -12,6 +12,25 @@ import Foundation
 
 
 
+///
+/// Atomically replace the contents of `ptr` (if they are equal to `oldval`) with `newval`
+///
+/// - Returns: the original contents of `ptr`
+///
+@Volatile
+@inline(__always)
+@discardableResult
+public func git_atomic_compare_and_swap<T: Equatable>(ptr: inout T, oldval: T, newval: T) async -> T {
+    var foundval = ptr
+    if foundval == oldval {
+        ptr = newval
+    }
+    return foundval
+}
+
+
+
+
 //public extension TlsData {
 //    
 //    /**

@@ -20,7 +20,7 @@ import Foundation
 ///
 /// - Parameter pathname: A path to a file
 /// - Returns: The real path to that file, resolving all symlinks, dots, etc., or `nil` if it doesn't exist at the given path.
-public func p_realpath(pathname: String) -> String? {
+public func p_realpath(pathname: String) -> String? { // TODO: This and `p_realpath` are Our first attempt to completely rewrite one of these low-level C functions with high-level Swift implementations. This should be tested thoroughly to guarantee parity!
     let proposedPath = URL(filePath: pathname).resolvingSymlinksInPath().standardizedFileURL.path
     return if FileManager.default.fileExists(atPath: proposedPath) { proposedPath } else { nil }
 }

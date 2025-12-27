@@ -12,7 +12,7 @@ import Foundation
 
 
 
-public actor AttributeCache: AnyActorProtocol {
+public actor AttributeCache: AnyActorProtocol { // actor because it needs reference semantics and thread safety
     public var cfg_attr_file: String? /* cached value of core.attributesfile */
     public var cfg_excl_file: String? /* cached value of core.excludesfile */
     public var files: StringMap      /* hash path to git_attr_cache_entry records */

@@ -141,7 +141,7 @@ public typealias git_off_t = FileSize
 public typealias VoidStar = AnyRefProtocol
 
 
-@available(*, unavailable, renamed: "String", message: "`char *` is a C string")
+@available(*, unavailable, renamed: "String", message: "`char *` is a C string, so libgit2.swift uses Swift's builtin String type to represent it")
 public typealias CharStar = UnsafePointer<CChar>
 
 

@@ -47,7 +47,7 @@ No Windows support yet, sadly. Putting in a bunch of placeholder Windows code bu
 
 ## Feedback
 
-If you have an improvement idea, or just feel strongly about any of the decisions which cause this package to diverge from libgit2 (for example, using platform randomness and denying deterministic PRNG), please file an issue at https://github.com/KyLeggiero/libgit2.swift/issues/new/choose
+If you have an improvement idea, or just feel strongly about any of the decisions which cause this package to diverge from libgit2 (for example, using platform randomness and denying deterministic PRNG), please file an issue at https://github.com/KyNorthstar/libgit2.swift/issues/new/choose
 
 
 

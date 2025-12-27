@@ -17,12 +17,13 @@ public func git_path_str_is_valid(repo: Repository, path: String, file_mode: UIn
     
     /* Upgrade the ".git" checks based on platform */
     if flags.contains(.dotGit) {
-        flags = dotgit_flags(repo, flags)
+        flags = dotgit_flags(repo: repo, flags: flags)
     }
 
     /* Update the length checks based on platform */
-    if ((flags & GIT_FS_PATH_REJECT_LONG_PATHS))
+    if flags.contains(GIT_FS_PATH_REJECT_LONG_PATHS) {
         flags = length_flags(repo, flags);
+    }
 
     let data: repository_path_validate_data = .init(repo: repo, file_mode: file_mode, flags: flags)
 
@@ -50,8 +51,8 @@ private struct repository_path_validate_data {
 
 
 
-@inlinable
-func dotgit_flags(
+@inline(__always)
+private func dotgit_flags(
 repo: Repository,
 flags: FilesystemPathRejectionFlags)
 -> FilesystemPathRejectionFlags
@@ -76,6 +77,35 @@ flags: FilesystemPathRejectionFlags)
         error = git_repository__configmap_lookup(&protectNTFS, repo, GIT_CONFIGMAP_PROTECTNTFS);
     if (!error && protectNTFS)
         flags |= GIT_PATH_REJECT_DOT_GIT_NTFS;
+
+    return flags;
+}
+
+
+
+@inline(__always)
+private func length_flags(
+    repo: Repository,
+    flags: FilesystemPathRejectionFlags)
+-> CUnsignedInt
+{
+    var flags = flags
+#if os(Windows)
+    var allow: Bool = false
+
+    if (repo &&
+        git_repository__configmap_lookup(&allow, repo, GIT_CONFIGMAP_LONGPATHS) < 0) {
+        allow = false
+    }
+
+    if (allow) {
+        flags &= ~GIT_FS_PATH_REJECT_LONG_PATHS;
+    }
+
+#else
+    flags &= ~GIT_FS_PATH_REJECT_LONG_PATHS;
+    flags.insert(~.longPaths)
+#endif
 
     return flags;
 }

@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import SafeStringIntegerAccess
 
 
 /**
@@ -19,33 +20,105 @@ import Foundation
  */
 public func git_fs_path_join_unrooted(
     path: String,
-    base: String)
-throws(GitError) -> (path: String, root_at: ssize_t)
+    base: String?)
+throws(GitError) -> (path: String, root_at: PathRoot)
 {
     var path_out = String()
-    var root: ssize_t
+    var root: PathRoot
     
     try assert(expr: path_out)
     try assert(expr: path)
     
-    root = ssize_t(git_fs_path_root(path)) ?? -1
+    root = git_fs_path_root(path)
+    
+    if let base, !root.isRooted {
+        path_out = String(joiningPath: base, withPathComponent: path)
+        
+        root = .rooted(after: base)
+    }
+    else {
+        try convertErrorsWithCodesButNotKinds(to: .generic) { () throws(_) in
+            try git_str_sets(buffer: &path_out, source: path)
+        }
+        do {
+            try git_str_sets(buffer: &path_out, source: path)
+        }
+        catch where error.hasCodeButNotKind {
+            throw .generic
+        }
+        catch {}
 
-    if (base != NULL && root < 0) {
-        if (git_str_joinpath(path_out, base, path) < 0)
-            return -1;
-
-        root = (ssize_t)strlen(base);
-    } else {
-        if (git_str_sets(path_out, path) < 0)
-            return -1;
-
-        if (root < 0)
-            root = 0;
-        else if (base)
-            git_fs_path_equal_or_prefixed(base, path, &root);
+        if !root.isRooted {
+            root = .rooted(offset: 0)
+        }
+        else if let base {
+            root = .init(offset: git_fs_path_equal_or_prefixed(parent: base, child: path).prefixLength)
+        }
     }
     
     return (path: path_out, root_at: root)
+}
+
+
+/// Result of comparing two POSIX-style paths for equality or prefix relationship.
+public enum FSPathCompareResult {
+    case notEqual                  // Corresponds to GIT_FS_PATH_NOTEQUAL
+    case equal(prefixLength: Int)  // Corresponds to GIT_FS_PATH_EQUAL
+    case prefix(prefixLength: Int) // Corresponds to GIT_FS_PATH_PREFIX
+}
+
+
+
+public extension FSPathCompareResult {
+    var prefixLength: Int? {
+        switch self {
+            case .equal(prefixLength: let v),
+                .prefix(prefixLength: let v):
+            return v
+            
+        case .notEqual:
+            return nil
+        }
+    }
+}
+
+
+
+/// Determines if a path is equal to or potentially a child of another.
+///
+/// - Parameters:
+///   - parent: The possible parent
+///   - child:  The possible child
+@inline(__always)
+public func git_fs_path_equal_or_prefixed(
+    parent: String,
+    child: String)
+-> FSPathCompareResult {
+    if parent == child {
+        return .equal(prefixLength: parent.count)
+    }
+    
+    guard child.hasPrefix(parent) else {
+        return .notEqual
+    }
+    
+    let remainingChild = child.dropFirst(parent.count)
+    
+    if remainingChild.first == "/" {
+        // Parent's path without trailing slash
+        let prefixLength = parent.hasSuffix("/")
+            ? parent.count - 1
+            : parent.count
+        return .prefix(prefixLength: prefixLength)
+    }
+    else if parent.hasSuffix("/") {
+        // Parent ends with slash, child continues directly
+        return .prefix(prefixLength: parent.count - 1)
+    }
+    else {
+        // String prefix but not directory boundary (e.g., "foo" vs "foobar")
+        return .notEqual
+    }
 }
 
 
@@ -62,12 +135,30 @@ public enum PathRoot: AnyEnumProtocol {
 
 
 
+public extension PathRoot {
+    static func rooted(after prefix: String) -> Self {
+        .rooted(offset: prefix.count)
+    }
+}
+
+
+
 extension PathRoot: RawRepresentable {
     
     public init(rawValue: RawValue) {
         self = switch rawValue {
         case 0...: .rooted(offset: rawValue)
         default:   .notRooted
+        }
+    }
+    
+    
+    public init(offset: RawValue?) {
+        if let offset {
+            self.init(rawValue: offset)
+        }
+        else {
+            self = .notRooted
         }
     }
     
@@ -89,6 +180,14 @@ extension PathRoot: RawRepresentable {
     }
     
     
+    public var isRooted: Bool {
+        switch self {
+        case .rooted:    true
+        case .notRooted: false
+        }
+    }
+    
+    
     
     public typealias RawValue = Int
 }
@@ -104,7 +203,7 @@ extension PathRoot: RawRepresentable {
  * returns -1.
  */
 public func git_fs_path_root(_ path: String) -> PathRoot {
-    var offset: CInt = 0
+    var offset: Int = 0
     
     /* Does the root of the path look like a windows drive ? */
     if let prefix_len = dos_drive_prefix_length(path: path) {
@@ -128,7 +227,7 @@ public func git_fs_path_root(_ path: String) -> PathRoot {
 //        return offset;
 #endif
 
-    if "/" == path[path.index(path.startIndex, offsetBy: Int(offset))] {
+    if "/" == path[path.index(path.startIndex, offsetBy: offset)] {
         return .rooted(offset: offset)
     }
     else {
@@ -137,7 +236,7 @@ public func git_fs_path_root(_ path: String) -> PathRoot {
 }
 
 
-private func dos_drive_prefix_length(path: String) -> CInt?
+private func dos_drive_prefix_length(path: String) -> Int?
 {
     guard let firstCharacter = path.first else {
         // libgit2 doesn't do this 🙃
@@ -212,49 +311,54 @@ private extension ssize_t {
 
 
 /** Flags to determine path validity in `git_fs_path_isvalid` */
-struct FilesystemPathReject: OptionSet {
+public struct FilesystemPathRejectionFlags: AnyStructProtocol, OptionSet {
     /// The underlying bitfield.
-    let rawValue: Int
-
+    public let rawValue: Int
+    
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+    
+    
     // MARK: Individual flag bindings
-    static let emptyComponent = PathReject(rawValue: 1 << 0)
-    static let traversal     = PathReject(rawValue: 1 << 1)
-    static let slash         = PathReject(rawValue: 1 << 2)
-    static let backslash     = PathReject(rawValue: 1 << 3)
-    static let trailingDot   = PathReject(rawValue: 1 << 4)
-    static let trailingSpace = PathReject(rawValue: 1 << 5)
-    static let trailingColon = PathReject(rawValue: 1 << 6)
-    static let dosPaths      = PathReject(rawValue: 1 << 7)
-    static let ntChars       = PathReject(rawValue: 1 << 8)
-    static let longPaths     = PathReject(rawValue: 1 << 9)
-
-    static let max: PathReject = .longPaths
+    public static let emptyComponent = Self(rawValue: 1 << 0)
+    public static let traversal     = Self(rawValue: 1 << 1)
+    public static let slash         = Self(rawValue: 1 << 2)
+    public static let backslash     = Self(rawValue: 1 << 3)
+    public static let trailingDot   = Self(rawValue: 1 << 4)
+    public static let trailingSpace = Self(rawValue: 1 << 5)
+    public static let trailingColon = Self(rawValue: 1 << 6)
+    public static let dosPaths      = Self(rawValue: 1 << 7)
+    public static let ntChars       = Self(rawValue: 1 << 8)
+    public static let longPaths     = Self(rawValue: 1 << 9)
+    
+    public static let max: Self = .longPaths
 }
 
 
 
 // MARK: - Migration
 
-@available(*, unavailable, renamed: "FilesystemPathReject.emptyComponent")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.emptyComponent")
 public var GIT_FS_PATH_REJECT_EMPTY_COMPONENT: Int { fatalError() }
-@available(*, unavailable, renamed: "FilesystemPathReject.traversal")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.traversal")
 public var GIT_FS_PATH_REJECT_TRAVERSAL: Int { fatalError() }
-@available(*, unavailable, renamed: "FilesystemPathReject.slash")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.slash")
 public var GIT_FS_PATH_REJECT_SLASH: Int { fatalError() }
-@available(*, unavailable, renamed: "FilesystemPathReject.backslash")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.backslash")
 public var GIT_FS_PATH_REJECT_BACKSLASH: Int { fatalError() }
-@available(*, unavailable, renamed: "FilesystemPathReject.trailingDot")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.trailingDot")
 public var GIT_FS_PATH_REJECT_TRAILING_DOT: Int { fatalError() }
-@available(*, unavailable, renamed: "FilesystemPathReject.trailingSpace")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.trailingSpace")
 public var GIT_FS_PATH_REJECT_TRAILING_SPACE: Int { fatalError() }
-@available(*, unavailable, renamed: "FilesystemPathReject.trailingColon")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.trailingColon")
 public var GIT_FS_PATH_REJECT_TRAILING_COLON: Int { fatalError() }
-@available(*, unavailable, renamed: "FilesystemPathReject.dosPaths")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.dosPaths")
 public var GIT_FS_PATH_REJECT_DOS_PATHS: Int { fatalError() }
-@available(*, unavailable, renamed: "FilesystemPathReject.ntChars")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.ntChars")
 public var GIT_FS_PATH_REJECT_NT_CHARS: Int { fatalError() }
-@available(*, unavailable, renamed: "FilesystemPathReject.longPaths")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.longPaths")
 public var GIT_FS_PATH_REJECT_LONG_PATHS: Int { fatalError() }
 
-@available(*, unavailable, renamed: "FilesystemPathReject.max")
+@available(*, unavailable, renamed: "FilesystemPathRejectionFlags.max")
 public var GIT_FS_PATH_REJECT_MAX: Int { fatalError() }

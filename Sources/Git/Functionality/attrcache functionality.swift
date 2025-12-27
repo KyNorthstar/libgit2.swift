@@ -12,23 +12,29 @@ import Foundation
 
 
 
-public func git_attr_cache__init(repo: inout Repository)
+@inline(__always)
+public func attr_cache_lookup_entry(cache: AttributeCache, path: String) async -> git_attr_file_entry? {
+    await cache.files[path] as? git_attr_file_entry
+}
+
+
+
+public func git_attr_cache__init(repo: Repository)
 throws(GitError)
 {
     var ret: GitError? = nil
     var cfg: Config? = nil
     
-    guard nil == repo.attrcache?.pointee else {
+    guard nil == repo.attrcache else {
         return
     }
     
     let cache = AttributeCache()
-    try GIT_ERROR_CHECK_ALLOC(cache);
     
-    try handleErrorsWithCodesButNotKinds {
-        try git_repository_config_snapshot(&cfg, repo)
+    try handleErrorsWithCodesButNotKinds { () throws(GitError) -> Void in
+        cfg = try git_repository_config_snapshot(repo: repo)
     }
-    catch: { _ in
+    catch: { (_) throws(GitError) -> Void in
         try cancel()
     }
     if ((ret = git_repository_config_snapshot(&cfg, repo)) < 0)
@@ -66,4 +72,57 @@ throws(GitError)
         git_config_free(cfg);
         throw ret
     }
+}
+
+
+
+public func git_attr_cache__get(
+    repo: Repository,
+    attr_session: git_attr_session,
+    source: git_attr_file_source,
+    parser: git_attr_file_parser,
+    allow_macros: Bool)
+throws(GitError) -> git_attr_file {
+    var cache = repo.attrcache
+    var entry: git_attr_file_entry? = nil
+    var file: git_attr_file? = nil
+    var updated: git_attr_file? = nil
+    
+    try throwOnlyForErrorsWithCodesButNotKinds {
+        file = try attr_cache_lookup(entry, repo, attr_session, source)
+    }
+    
+    /* load file if we don't have one or if existing one is out of date */
+    if (!file ||
+        (error = git_attr_file__out_of_date(repo, attr_session, file, source)) > 0)
+        error = git_attr_file__load(&updated, repo, attr_session,
+                                    entry, source, parser,
+                                    allow_macros);
+
+    /* if we loaded the file, insert into and/or update cache */
+    if (updated) {
+        if ((error = attr_cache_upsert(cache, updated)) < 0) {
+            git_attr_file__free(updated);
+        } else {
+            git_attr_file__free(file); /* offset incref from lookup */
+            file = updated;
+        }
+    }
+
+    /* if file could not be loaded */
+    if (error < 0) {
+        /* remove existing entry */
+        if (file) {
+            attr_cache_remove(cache, file);
+            git_attr_file__free(file); /* offset incref from lookup */
+            file = NULL;
+        }
+        /* no error if file simply doesn't exist */
+        if (error == GIT_ENOTFOUND) {
+            git_error_clear();
+            error = 0;
+        }
+    }
+
+    return file
 }
