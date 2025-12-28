@@ -15,19 +15,19 @@ import Foundation
 @available(*, deprecated, message: "Use a strongly-typed array instead")
 public typealias ArbitraryArray = [any AnyTypeProtocol]
 
-public typealias AnyTypeComparator<Value> = @Sendable (Value, Value) -> ComparisonResult
+public typealias Comparator<Value> = @Sendable (Value, Value) -> ComparisonResult
 
 
 
 /// An array with a built-in way to self-sort as items are added
 // Analogous to `git_vector`
 public struct SelfSortingArray<Element: AnyTypeProtocol>: AnyStructProtocol {
-    public var comparator: AnyTypeComparator<Element>?
+    public var comparator: Comparator<Element>?
     public var contents: Contents
     public var flags: Flags
     
     // Analogous to `git_vector_init`
-    public init(contents: [Element] = [], comparator: @escaping AnyTypeComparator<Element>)
+    public init(contents: [Element] = [], comparator: @escaping Comparator<Element>)
     where Element: Comparable {
         self.comparator = comparator
         self.contents = contents
@@ -169,7 +169,7 @@ private let __Flags_max = SelfSortingArray<AnyTypeProtocol>.Flags.calculateRawVa
 // MARK: - Migration
 
 @available(*, unavailable, renamed: "AnyTypeComparator")
-public typealias git_vector_cmp = AnyTypeComparator
+public typealias git_vector_cmp = Comparator
 
 @available(*, unavailable, renamed: "SelfSortingArray")
 public typealias git_vector = SelfSortingArray

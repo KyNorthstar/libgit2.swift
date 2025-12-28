@@ -67,7 +67,7 @@ public func _getEnv(name: String) throws(GitError) -> String {
 
 
 
-public typealias Comparator<Element> = (_ a: Element, _ b: Element) -> ComparisonResult
+//public typealias Comparator<Element> = (_ a: Element, _ b: Element) -> ComparisonResult
 
 
 
@@ -77,21 +77,26 @@ public func git__tsort<Element>(dst: inout [Element], comparator: Comparator<Ele
 
 
 
-
-
-
 public func git__tsort_r<Element>(dst: inout [Element], comparator: Comparator<Element>) {
-    TODO
+    // Swift's standard library sorting is generally very good (Introsort), and we can count on the Swift maintainers
+    // to ensure it remains production-ready.
+    // Using the standard library sort function also carries no maintenance burden.
+    //
+    // Gonna need to test this practically to ensure it's an appropriate replacement. If there's performance issues
+    // with any search/sort operations, start your fixes by implementing TimSort here.
+    //
+    // – Ky, 2025-12-28
+    dst.sort { comparator($0, $1) == .orderedAscending }
 }
-
 
 
 
 public extension Bool {
     /// Parse a string value as a boolean, just like libgit does, just like Core Git does.
     ///
-    /// Valid values for true are: `"true"`, `"yes"`, `"on"`, and `nil`
-    /// Valid values for false are: `"false"`, `"no"`, `"off"`, and any string beginning with NUL (U+0000)
+    /// Valid values for true are: `"true"`, `"yes"`, `"on"`, and `nil`.
+    /// Valid values for false are: `"false"`, `"no"`, `"off"`, and any string beginning with NUL (U+0000).
+    /// All other values result in an error being thrown..
     ///
     /// Parsing `nil` and NUL-starting strings this way are undocumented features of libgit2 1.8.4
     static func parse(gitBoolString value: String?) throws(GitError) -> Bool {
@@ -110,7 +115,7 @@ public extension Bool {
             return false
         }
         
-        throw .init(code: .__generic)
+        throw .generic
     }
 }
 
@@ -263,7 +268,7 @@ public extension Collection {
     ///   - comparator: _optional_ - The function which compares each value in the search. You may exclude this if the collection is filled with `Comparable` elements, but it is required otherwise.
     ///
     /// - Returns: A tuple containing the position where the element is or would be inserted if not found. If not found, `error` is set to `.objectNotFound`.
-    func binarySearch(for needle: Element, comparator: AnyTypeComparator<Element>) -> (position: Index, error: GitError?) {
+    func binarySearch(for needle: Element, comparator: Comparator<Element>) -> (position: Index, error: GitError?) {
         guard !isEmpty else {
             return (startIndex, .objectNotFound)
         }
@@ -490,14 +495,23 @@ private func binsearch<Element>(
 }
 
 /* Binary insertion sort, but knowing that the first "start" entries are sorted. Used in timsort. */
-private func bisort<Element>(dst: inout [Element], start: Int, size: Int, comparisonCurrier _: git__sort_r_cmp<Element>, comparator: Comparator<Element>) {
-    let i: [Element].Index
-    let x: Element
+/// Binary sort, but knowing that the first _n_ entries are sorted (where `start` is _n_)
+///
+/// - Parameters:
+///   - collection: The collection to sort
+///   - sortRange:  The indices which are to be sorted
+///   - comparator: Compares collection elements in order to perform the sorting
+private func bisort<Element>(
+    collection: inout [Element],
+    sortRange: [Element].Indices,
+    comparator: Comparator<Element>)
+{
+    var x: Element
     let location: SearchResult<[Element].Index>
 
-    for i in start ..< size {
+    for i in sortRange {
         /* If this entry is already correct, just move along */
-        switch comparator(dst[i - 1], dst[i]) {
+        switch comparator(collection[i - 1], collection[i]) {
         case .orderedDescending,
                 .orderedSame:
             continue
@@ -507,13 +521,12 @@ private func bisort<Element>(dst: inout [Element], start: Int, size: Int, compar
         }
         
         /* Else we need to find the right place, shift everything over, and squeeze in */
-        x = dst[i];
-        location = binsearch(haystack: dst, needle: x, comparator: comparator)
-        //for (j = (int)i - 1; j >= location; j--) {
+        x = collection[i]
+        location = binsearch(haystack: collection, needle: x, comparator: comparator)
         for j in stride(from: i - 1, through: location.insertionPoint, by: -1) {
-            dst[j + 1] = dst[j];
+            collection[j + 1] = collection[j]
         }
-        dst[location.insertionPoint] = x;
+        collection[location.insertionPoint] = x
     }
 }
 
@@ -529,61 +542,9 @@ private struct tsort_run {
 
 private struct tsort_store<Element> {
     var alloc: Int
-    var cmp: git__sort_r_cmp<Element>
+    //var cmp: git__sort_r_cmp<Element>
     var payload: Any
     var storage: SafePointer<Any>
-}
-
-
-
-// Original had `payload` as a `void*`... unsure why
-@inline(__always)
-private func tsort_r_cmp<Element>(a: Element, b: Element, payload: git__tsort_cmp<Element>) -> ComparisonResult {
-    payload(a, b)
-}
-
-
-private func git__tsort_r<Element>(dst: inout [Element], cmp: git__sort_r_cmp<Element>, payload: Any)
-{
-    var size: Int { dst.count }
-    
-    let _store: tsort_store<Element>
-    let store: tsort_store<Element>
-    var run_stack: [tsort_run] = .init()
-    run_stack.reserveCapacity(128)
-    
-    var stack_curr: UInt = 0
-    var len: UInt
-    var run: UInt
-    var curr: UInt = 0
-    var minrun: UInt
-
-    if (size < 64) {
-        bisort(dst, 1, size, cmp, payload);
-        return;
-    }
-
-    /* compute the minimum run length */
-    minrun = (ssize_t)compute_minrun(size);
-
-    /* temporary storage for merges */
-    store->alloc = 0;
-    store->storage = NULL;
-    store->cmp = cmp;
-    store->payload = payload;
-
-    PUSH_NEXT();
-    PUSH_NEXT();
-    PUSH_NEXT();
-
-    while (1) {
-        if (!check_invariant(run_stack, stack_curr)) {
-            stack_curr = collapse(dst, run_stack, stack_curr, store, size);
-            continue;
-        }
-
-        PUSH_NEXT();
-    }
 }
 
 
