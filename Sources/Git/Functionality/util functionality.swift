@@ -9,7 +9,9 @@
 //
 
 import Foundation
+
 //import OptionalTools
+import SafePointer
 
 
 
@@ -65,7 +67,23 @@ public func _getEnv(name: String) throws(GitError) -> String {
 
 
 
-extern void git__tsort(void **dst, size_t size, git__tsort_cmp cmp);
+public typealias Comparator<Element> = (_ a: Element, _ b: Element) -> ComparisonResult
+
+
+
+public func git__tsort<Element>(dst: inout [Element], comparator: Comparator<Element>) {
+    git__tsort_r(dst: &dst, comparator: comparator)
+}
+
+
+
+
+
+
+public func git__tsort_r<Element>(dst: inout [Element], comparator: Comparator<Element>) {
+    TODO
+}
+
 
 
 
@@ -329,6 +347,247 @@ public extension Collection where Element: Comparable & AnyTypeProtocol {
 
 
 
+// MARK: - tsort.c
+
+/// The result of searching a collection for an item, or the best place to insert an item
+private enum SearchResult<Index: Comparable> {
+    
+    /// The needle was found in the haystack at this index
+    case found(at: Index)
+    
+    /// The needle wasn't found in the haystack, but it'd fit if inserted at this index
+    case notFound(insertionPoint: Index)
+    
+    
+    /// The index where the element was found, or where it should be inserted
+    @inline(__always)
+    var insertionPoint: Index {
+        switch self {
+        case .found(at: let i),
+                .notFound(insertionPoint: let i):
+            return i
+        }
+    }
+    
+    
+    /// `true` iff this represents an element which was actually found in the collection
+    @inline(__always)
+    var isFound: Bool {
+        switch self {
+        case .found:    true
+        case .notFound: false
+        }
+    }
+}
+
+
+
+/// Performs a binary search for the given needle, returning its index if it's found (or `nil` if it isn't)
+///
+/// - Parameters:
+///   - haystack:   The collection to search
+///   - needle:     The element to find
+///   - comparator: Compares values in the haystack against the needle. This function is called many times in rapid succession, so make sure it's efficient
+///
+/// - Returns: The index of `x` if it's found (or `nil` if it isn't)
+private func binsearch<Element>(
+    haystack: [Element],
+    needle: Element,
+    comparator: Comparator<Element>)
+-> SearchResult<[Element].Index> {
+    guard !haystack.isEmpty else {
+        return .notFound(insertionPoint: 0)
+    }
+    
+    @inline(__always) let lx: Element = haystack[0] // original was `dst[l]` but `l` at this point is always 0
+    
+    // Check beginning conditions
+    let initialComparison = comparator(needle, lx) // original code did this twice lol
+    
+    if case .orderedAscending = initialComparison {
+        return .notFound(insertionPoint: 0)
+    }
+    else if initialComparison == .orderedSame {
+        return .found(at: (1 ..< haystack.endIndex)
+            .first(where: { .orderedSame != comparator(needle, haystack[$0]) })
+                      ?? haystack.endIndex
+        )
+    }
+    
+    var lowerBound: Int = haystack.startIndex
+    var upperBound: Int = haystack.endIndex - 1
+    var currentIndex: Int = upperBound >> 1 // ?
+    
+    // Binary search loop
+    var currentElement = haystack[currentIndex]
+    while true {
+        let val = comparator(needle, currentElement)
+        
+        if case .orderedAscending = val { // The needle is definitely before this index
+            guard currentIndex > (lowerBound + 1) else {
+                return .notFound(insertionPoint: currentIndex)
+            }
+            upperBound = currentIndex
+        }
+        else if case .orderedDescending = val { // The needle is definitely after this index
+            guard upperBound > (currentIndex + 1) else {
+                return .notFound(insertionPoint: currentIndex + 1)
+            }
+            lowerBound = currentIndex
+        }
+        else { // Found!
+            // Advance past all equal elements and return the index after that run so the last element can be viewed, or a new identical element will be appended to the run
+            repeat {
+                currentIndex += 1
+            } while currentIndex < haystack.count && comparator(needle, haystack[currentIndex]) == .orderedSame
+            
+            return .found(at: currentIndex)
+        }
+        
+        currentIndex = lowerBound + ((upperBound - lowerBound) >> 1)
+        currentElement = haystack[currentIndex]
+    }
+    
+    /*
+    var l: Int = haystack.startIndex
+    var r: Int = haystack.endIndex - 1
+    var c: Int = r >> 1 // ?
+    var lx: Element = haystack[0] // original was `dst[l]` but `l` at this point is always 0
+    var cx: Element
+    
+    /* check for beginning conditions */
+    if case .orderedAscending = comparator(needle, lx, payload) {
+        return 0
+    }
+    else if case .orderedSame = comparator(needle, lx, payload) {
+        return (1 ..< haystack.endIndex)
+            .first { comparator(needle, haystack[$0], payload) == .orderedSame }
+    }
+    
+    /* guaranteed not to be >= rx */
+    cx = haystack[c]
+    while true {
+        let val = comparator(needle, cx, payload)
+        if case .orderedAscending = val {
+            if (c - l) <= 1 { return c }
+            r = c
+        }
+        else if val > 0 {
+            if (r - c) <= 1 { return c + 1 }
+            l = c
+            lx = cx
+        }
+        else {
+            do {
+                cx = haystack[++c]
+            } while (comparator(needle, cx, payload) == 0);
+            return c;
+        }
+        c = l + ((r - l) >> 1);
+        cx = haystack[c];
+    }
+     */
+}
+
+/* Binary insertion sort, but knowing that the first "start" entries are sorted. Used in timsort. */
+private func bisort<Element>(dst: inout [Element], start: Int, size: Int, comparisonCurrier _: git__sort_r_cmp<Element>, comparator: Comparator<Element>) {
+    let i: [Element].Index
+    let x: Element
+    let location: SearchResult<[Element].Index>
+
+    for i in start ..< size {
+        /* If this entry is already correct, just move along */
+        switch comparator(dst[i - 1], dst[i]) {
+        case .orderedDescending,
+                .orderedSame:
+            continue
+            
+        case .orderedAscending:
+            break
+        }
+        
+        /* Else we need to find the right place, shift everything over, and squeeze in */
+        x = dst[i];
+        location = binsearch(haystack: dst, needle: x, comparator: comparator)
+        //for (j = (int)i - 1; j >= location; j--) {
+        for j in stride(from: i - 1, through: location.insertionPoint, by: -1) {
+            dst[j + 1] = dst[j];
+        }
+        dst[location.insertionPoint] = x;
+    }
+}
+
+
+
+/* timsort implementation, based on timsort.txt */
+private struct tsort_run {
+    var start: UInt
+    var length: UInt
+}
+
+
+
+private struct tsort_store<Element> {
+    var alloc: Int
+    var cmp: git__sort_r_cmp<Element>
+    var payload: Any
+    var storage: SafePointer<Any>
+}
+
+
+
+// Original had `payload` as a `void*`... unsure why
+@inline(__always)
+private func tsort_r_cmp<Element>(a: Element, b: Element, payload: git__tsort_cmp<Element>) -> ComparisonResult {
+    payload(a, b)
+}
+
+
+private func git__tsort_r<Element>(dst: inout [Element], cmp: git__sort_r_cmp<Element>, payload: Any)
+{
+    var size: Int { dst.count }
+    
+    let _store: tsort_store<Element>
+    let store: tsort_store<Element>
+    var run_stack: [tsort_run] = .init()
+    run_stack.reserveCapacity(128)
+    
+    var stack_curr: UInt = 0
+    var len: UInt
+    var run: UInt
+    var curr: UInt = 0
+    var minrun: UInt
+
+    if (size < 64) {
+        bisort(dst, 1, size, cmp, payload);
+        return;
+    }
+
+    /* compute the minimum run length */
+    minrun = (ssize_t)compute_minrun(size);
+
+    /* temporary storage for merges */
+    store->alloc = 0;
+    store->storage = NULL;
+    store->cmp = cmp;
+    store->payload = payload;
+
+    PUSH_NEXT();
+    PUSH_NEXT();
+    PUSH_NEXT();
+
+    while (1) {
+        if (!check_invariant(run_stack, stack_curr)) {
+            stack_curr = collapse(dst, run_stack, stack_curr, store, size);
+            continue;
+        }
+
+        PUSH_NEXT();
+    }
+}
+
+
+
 // MARK: - Migration
 
 @available(*, unavailable, renamed: "array.count", message: "Just use Swift's builtin array.count lol")
@@ -349,3 +608,16 @@ public func git__parse_bool(_: inout CInt, _: CharStar) -> CInt { fatalError() }
 
 @available(*, unavailable, renamed: "array.binarySearch(for:)", message: "Most of these parameters are unnecessary in Swift; their state is managed within the rewritten function.")
 public func git__bsearch(_: [Any], _: size_t, _: Any, _: (_: Any, _: Any) -> CInt, _: inout size_t) { fatalError() }
+
+@available(*, unavailable, renamed: "Comparator")
+public typealias git__tsort_cmp<Element> = Comparator<Element>
+
+@available(*, unavailable, message: "This was a C function that takes a comparator, probably because function pointers are opaque in C. In Swift, we don't have that overhead, so we can just use a regular `Comparator` directly instead.")
+public typealias git__sort_r_cmp<Element> = (_ a: Element, _ b: Element, _ comparator: Comparator<Element>) -> ComparisonResult
+
+
+@available(*, unavailable, renamed: "git__tsort(dst:comparator:)", message: "The Swift version of this doesn't need to take a separate array size parameter")
+public func git__tsort<Element>(_: inout [Element], _: size_t, _: Comparator<Element>) -> Void { fatalError() }
+
+@available(*, unavailable, renamed: "git__tsort_r(dst:comparator:)", message: "The Swift version of this doesn't need to take a separate array size parameter, nor does it need the extra `git__sort_r_cmp` indirection.")
+public func git__tsort_r<Element>(_: inout [Element], _:size_t, _: git__sort_r_cmp<Element>, _: Comparator<Element>) -> Void { fatalError() }

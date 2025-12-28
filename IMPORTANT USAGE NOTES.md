@@ -209,11 +209,13 @@ This package also chooses _only_ CommonCrypto as the hash creation backend for a
 
 ### Primitive types
 
-The following describes how primitives appear in libgit2, and how libgit2.swift translates them in situations where other types don't better describe the value (e.g. an `enum`, `GitError`, etc.):
+The following describes how primitives appear in libgit2, and how libgit2.swift translates them in situations:
 
 |    libgit2     |          note          |     libgit2.swift    |
 | -------------- | ---------------------- | -------------------- |
-| `int`          |                        | `Int`                |
+| `int`          | As the default integer | `Int`                |
+| `int`          | As error code          | `GitError`           |
+| `int`          | As comparison result   | `ComparisonResult`   |
 | `int8_t`       |                        | `Int8`               |
 | `int16_t`      |                        | `Int16`              |
 | `int32_t`      |                        | `Int32`              |
@@ -225,7 +227,12 @@ The following describes how primitives appear in libgit2, and how libgit2.swift 
 | `uint32_t`     |                        | `UInt32`             |
 | `uint64_t`     |                        | `UInt64`             |
 | `size_t`       | For collection indices | `<collection>.Index` |
-| `size_t`       | For collection counts  | `Int`                |
+| `size_t`       | For collection counts  | `Int` or discarded   |
+| `ssize_t`      | For collection counts  | `UInt` or discarded  |
+| `void*`        | As unknown type        | `Any`                |
+| `void*`        | As flexible type       | `<generic>`          |
+
+> There are situations where another type is used which better describes the value (e.g. an `enum`), but which are excluded from this table because they're specific usecases and not general guidance on how to use this library
 
 
 

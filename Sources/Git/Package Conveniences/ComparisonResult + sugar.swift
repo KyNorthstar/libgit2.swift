@@ -35,4 +35,18 @@ internal extension ComparisonResult {
     {
         self.init(lhs[keyPath: comparableField], rhs[keyPath: comparableField])
     }
+    
+    
+    @inline(__always)
+    init<I: SignedInteger>(cValue: I) {
+        if case .zero = cValue {
+            self = .orderedSame
+        }
+        else if cValue < .zero {
+            self = .orderedAscending
+        }
+        else {
+            self = .orderedDescending
+        }
+    }
 }
