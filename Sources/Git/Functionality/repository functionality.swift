@@ -300,7 +300,7 @@ public extension Repository {
     @inline(__always)
     func push_attr_file(
         attr_session: git_attr_session,
-        list: SelfSortingArray<Never>,
+        list: SelfSortingArray<TODO>,
         base: String,
         filename: String)
     throws(GitError)

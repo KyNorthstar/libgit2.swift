@@ -71,6 +71,32 @@ public func _getEnv(name: String) throws(GitError) -> String {
 
 
 
+// extern int git__suffixcmp(const char *str, const char *suffix)
+public func git__suffixcmp(str: String, suffix: String) -> ComparisonResult {
+    let a = str.count
+    let b = suffix.count
+    
+    guard a >= b else {
+        return .orderedAscending
+    }
+    
+    // Only look at the last `b` characters of `str`
+    let startIndex = str.index(str.endIndex, offsetBy: -b)
+    let tail = str[startIndex...]
+    
+    return tail.compare(suffix, options: .literal)
+    
+    // The below code translates this original C code:
+    //
+    // size_t a = strlen(str);
+    // size_t b = strlen(suffix);
+    // if (a < b)
+    //     return -1;
+    // return strcmp(str + (a - b), suffix);
+}
+
+
+
 public func git__tsort<Element>(dst: inout [Element], comparator: Comparator<Element>) {
     git__tsort_r(dst: &dst, comparator: comparator)
 }
@@ -452,47 +478,9 @@ private func binsearch<Element>(
         currentIndex = lowerBound + ((upperBound - lowerBound) >> 1)
         currentElement = haystack[currentIndex]
     }
-    
-    /*
-    var l: Int = haystack.startIndex
-    var r: Int = haystack.endIndex - 1
-    var c: Int = r >> 1 // ?
-    var lx: Element = haystack[0] // original was `dst[l]` but `l` at this point is always 0
-    var cx: Element
-    
-    /* check for beginning conditions */
-    if case .orderedAscending = comparator(needle, lx, payload) {
-        return 0
-    }
-    else if case .orderedSame = comparator(needle, lx, payload) {
-        return (1 ..< haystack.endIndex)
-            .first { comparator(needle, haystack[$0], payload) == .orderedSame }
-    }
-    
-    /* guaranteed not to be >= rx */
-    cx = haystack[c]
-    while true {
-        let val = comparator(needle, cx, payload)
-        if case .orderedAscending = val {
-            if (c - l) <= 1 { return c }
-            r = c
-        }
-        else if val > 0 {
-            if (r - c) <= 1 { return c + 1 }
-            l = c
-            lx = cx
-        }
-        else {
-            do {
-                cx = haystack[++c]
-            } while (comparator(needle, cx, payload) == 0);
-            return c;
-        }
-        c = l + ((r - l) >> 1);
-        cx = haystack[c];
-    }
-     */
 }
+
+
 
 /* Binary insertion sort, but knowing that the first "start" entries are sorted. Used in timsort. */
 /// Binary sort, but knowing that the first _n_ entries are sorted (where `start` is _n_)
@@ -550,6 +538,9 @@ private struct tsort_store<Element> {
 
 
 // MARK: - Migration
+
+@available(*, unavailable, renamed: "git__suffixcmp(str:suffix:)")
+public func git__suffixcmp(_:String,_:String) -> Int { fatalError() }
 
 @available(*, unavailable, renamed: "array.count", message: "Just use Swift's builtin array.count lol")
 public func ARRAY_SIZE(_ array: [any Any]) -> Int { fatalError() }

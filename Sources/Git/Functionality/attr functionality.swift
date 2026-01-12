@@ -22,7 +22,7 @@ private func collect_attr_files(
     session attr_session: git_attr_session,
     options opts: git_attr_options,
     path: String,
-    files: SelfSortingArray<any AnyTypeProtocol>) // TODO: Use actual type
+    files: SelfSortingArray<TODO>) // TODO: Use actual type
 throws(GitError)
 {
     var error: GitError? = nil
@@ -68,14 +68,14 @@ throws(GitError)
      * - $GIT_PREFIX/etc/gitattributes
      */
     
-    try handleErrorsWithCodesButNotKinds { () throws(GitError) -> Void in
+    try handleErrorsWithCodesButNotKinds { () throws(_) in
         attrfile = try repo.git_repository__item_path(item: .info)
     }
-    catch: { (error: GitError) throws(GitError) -> Void in
-        try handleErrorsWithCodesButNotKinds { () throws(GitError) -> Void in
-            repo.push_attr_file(attr_session, files, attrfile.ptr, GIT_ATTR_FILE_INREPO)
+    catch: { (error: _) throws(_) -> Void in
+        try handleErrorsWithCodesButNotKinds { () throws(_) -> Void in
+            try repo.push_attr_file(attr_session: attr_session, list: files, base: attrfile, filename: GIT_ATTR_FILE_INREPO)
         }
-        catch: { (error: GitError) throws(GitError) -> Void in
+        catch: { (error: _) throws(_) -> Void in
             return try cleanup(error: error)
         }
     }
@@ -85,17 +85,23 @@ throws(GitError)
     info.attr_session = attr_session;
     info.opts = opts;
     info.workdir = workdir;
-    if (git_repository_index__weakptr(&info.index, repo) < 0)
-        git_error_clear(); /* no error even if there is no index */
+    info.index = repo.index
     info.files = files;
-
-    if (!strcmp(dir.ptr, "."))
-        error = push_one_attr(&info, "");
-    else
-        error = git_fs_path_walk_up(&dir, workdir, push_one_attr, &info);
-
-    if (error < 0)
-        goto cleanup;
+    
+    do {
+        try throwOnlyForErrorsWithCodesButNotKinds { () throws(_) in
+            if 0 == strcmp(dir, ".") {
+                try push_one_attr(onto: &info, path: "")
+            }
+            else {
+                try git_fs_path_walk_up(&dir, workdir, push_one_attr, &info);
+            }
+        }
+    }
+    catch error {
+        if (error < 0)
+            goto cleanup;
+    }
 
     if (git_repository_attr_cache(repo)->cfg_attr_file != NULL) {
         error = push_attr_file(repo, attr_session, files, NULL, git_repository_attr_cache(repo)->cfg_attr_file);
@@ -217,18 +223,24 @@ private func release_attr_files<T: Sendable>(_: inout SelfSortingArray<T>) { fat
 
 private extension Repository {
     func push_attr_source(
-        attr_session: git_attr_session,
+        attrSession: git_attr_session?,
         list: SelfSortingArray<Never>,
         source: git_attr_file_source,
-        allow_macros: Bool)
+        allowMacros: Bool)
     throws(GitError) {
         var file: git_attr_file? = nil
         
-        try throwOnlyForErrorsWithCodesButNotKinds {
-            file = try self.git_attr_cache__get(attr_session,
+        try throwOnlyForErrorsWithCodesButNotKinds { () throws(_) in
+            file = try git_attr_cache__get(
+                repo: self,
+                attr_session: attrSession,
+                source: source,
+                parser: git_attr_file__parse_buffer,
+                allow_macros: allowMacros)
+            file = try self.git_attr_cache__get(attrSession,
                                         source,
                                         git_attr_file__parse_buffer,
-                                        allow_macros);
+                                        allowMacros);
         }
         
         if (file != NULL) {
@@ -242,9 +254,114 @@ private extension Repository {
 
 
 
+private func attr_decide_sources(
+    flags: git_attr_check,
+    has_wd: Bool,
+    has_index: Bool,
+    srcs: inout [git_attr_file_source_t])
+-> Int
+{
+    var count = 0
+    
+    // The original C code switched over `flags & 0x03`, but I'm unsure why.
+    // Since that's the same as `& 0b11`, all that does is mask all except the bottom two bits...
+    // which, I suppose does constrain it so that the contents of this `switch` match all possible values of its input.. but that's not required.
+    // I assume that this was some C-specific optimization, perhaps to do with casting or lookup tables.
+    // I'll just use the strongly-typed option set.
+    //
+    // – Ky 2026-01-11
+    if flags.contains(.GIT_ATTR_CHECK_FILE_THEN_INDEX) {
+        if has_wd {
+            srcs[count] = .file
+            count += 1
+        }
+        if has_index {
+            srcs[count] = .index
+            count += 1
+        }
+    }
+    else if flags.contains(.GIT_ATTR_CHECK_INDEX_THEN_FILE) {
+        if has_index {
+            srcs[count] = .index
+            count += 1
+        }
+        if has_wd {
+            srcs[count] = .file
+            count += 1
+        }
+    }
+    else if flags.contains(.GIT_ATTR_CHECK_INDEX_ONLY) {
+        if has_index {
+            srcs[count] = .index
+            count += 1
+        }
+    }
+    
+    if flags.contains(.GIT_ATTR_CHECK_INCLUDE_HEAD) {
+        srcs[count] = .head
+        count += 1
+    }
+
+    if flags.contains(.GIT_ATTR_CHECK_INCLUDE_COMMIT) {
+        srcs[count] = .commit
+        count += 1
+    }
+
+    return count;
+}
+
+
+
+// Unsure why but the original C used `void*` here instead of `attr_walk_up_info*` – Ky 2026-01-11
+private func push_one_attr(onto ref: inout attr_walk_up_info, path: String) throws(GitError) {
+    let info = ref
+    var src = [git_attr_file_source_t]()
+    let n_src: Int
+    let i: Int
+    let allow_macros: Bool
+    var lastError: GitError? = nil
+    
+    n_src = attr_decide_sources(flags: info.opts?.flags ?? .__empty,
+                                has_wd: info.workdir != nil,
+                                has_index: info.index != nil,
+                                srcs: &src)
+    
+    allow_macros = info.workdir.map({ 0 == strcmp($0, path) }) ?? false
+    
+    //for (i = 0; !error && i < n_src; ++i) {
+    for i in 0 ..< n_src {
+        //git_attr_file_source source = { src[i], path, GIT_ATTR_FILE };
+        var source = git_attr_file_source(type: src[i], base: path, filename: GIT_ATTR_FILE)
+        
+        if case .commit = src[i],
+           let opts = info.opts
+        {
+            source.commit_id = opts.attr_commit_id
+        }
+        
+        do {
+            try info.repo?.push_attr_source(attr_session: info.attr_session, list: info.files,
+                                 source: source, allow_macros: allow_macros)
+        }
+        catch {
+            // The original code seems to ignore errors when it comes to processing this loop, and then thtow the last error it encountered after the loop has completed.
+            // I'm trying to replicate that assuming it's intended behavior.
+            //
+            // – Ky 2026-01-11
+            lastError = error
+        }
+    }
+    
+    if let lastError {
+        throw lastError
+    }
+}
+
+
+
 // MARK: - Migration
 
-@available(*, unavailable, renamed: "repo.push_attr_source(attr_session:list:source:allow_macros:)")
+@available(*, unavailable, renamed: "repo.push_attr_source(attr_session:list:source:allow_macros:)", message: "The Swift version of this is a member on `Repository`")
 private func push_attr_source(
     repo: git_repository,
     attr_session: git_attr_session,
@@ -254,3 +371,27 @@ private func push_attr_source(
 throws(GitError) {
     fatalError()
 }
+
+
+@available(*, unavailable, renamed: "push_one_attr(onto:path:)", message: "The Swift version throws an error instead of returning an error code")
+public func push_one_attr<T>(_:T, _:CharStar) -> CInt { fatalError() }
+
+
+@available(*, unavailable, renamed: "git_attr_check.GIT_ATTR_CHECK_FILE_THEN_INDEX")
+public var GIT_ATTR_CHECK_FILE_THEN_INDEX: git_attr_check { fatalError() }
+
+@available(*, unavailable, renamed: "git_attr_check.GIT_ATTR_CHECK_INDEX_THEN_FILE")
+public var GIT_ATTR_CHECK_INDEX_THEN_FILE: git_attr_check { fatalError() }
+
+@available(*, unavailable, renamed: "git_attr_check.GIT_ATTR_CHECK_INDEX_ONLY")
+public var GIT_ATTR_CHECK_INDEX_ONLY: git_attr_check { fatalError() }
+
+
+@available(*, unavailable, renamed: "git_attr_check.GIT_ATTR_CHECK_NO_SYSTEM")
+public var GIT_ATTR_CHECK_NO_SYSTEM: git_attr_check { fatalError() }
+
+@available(*, unavailable, renamed: "git_attr_check.GIT_ATTR_CHECK_INCLUDE_HEAD")
+public var GIT_ATTR_CHECK_INCLUDE_HEAD: git_attr_check { fatalError() }
+
+@available(*, unavailable, renamed: "git_attr_check.GIT_ATTR_CHECK_INCLUDE_COMMIT")
+public var GIT_ATTR_CHECK_INCLUDE_COMMIT: git_attr_check { fatalError() }

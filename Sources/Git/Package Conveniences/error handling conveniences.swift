@@ -60,8 +60,7 @@ throws(GitError) {
 
 
 
-internal func throwOnlyForErrorsWithCodesButNotKinds(do closure: () throws(GitError) -> Void)
-throws(GitError) {
+internal func throwOnlyForErrorsWithCodesButNotKinds(do closure: () throws(GitError) -> Void) throws(GitError) {
     try handleErrorsWithCodesButNotKinds(do: closure, catch: { _ in })
 }
     

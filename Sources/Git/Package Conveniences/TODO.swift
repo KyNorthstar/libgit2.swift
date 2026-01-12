@@ -12,15 +12,15 @@ import Foundation
 
 
 
-@dynamicCallable
 package enum TODO {
     // Empty on-purpose: This type should never be initialized
 }
 
 
 
-extension TODO {
-    static func dynamicallyCall(withArguments _: [Any]) throws -> Any {
-        fatalError("TODO")
+package extension TODO {
+    @discardableResult
+    init!(_ message: String? = nil) {
+        fatalError(message ?? "TODO")
     }
 }

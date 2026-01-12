@@ -9,7 +9,55 @@ import Foundation
 
 
 
-public let GIT_ATTR_FILE          = ".gitattributes"
+@inline(__always) public let GIT_ATTR_FILE          = ".gitattributes"
+@inline(__always) public let GIT_ATTR_FILE_INREPO   = "attributes"
+@inline(__always) public let GIT_ATTR_FILE_SYSTEM   = "gitattributes"
+@inline(__always) public let GIT_ATTR_FILE_XDG      = "attributes"
+
+
+
+public enum git_attr_fnmatch_flags: UInt32, OptionSet, AutoOptionSet {
+    case __empty = 0
+    
+    case negative          = 0b0000_0000_0001 //1 << 0
+    case directory         = 0b0000_0000_0010 //1 << 1
+    case fullpath          = 0b0000_0000_0100 //1 << 2
+    case macro             = 0b0000_0000_1000 //1 << 3
+    case ignore            = 0b0000_0001_0000 //1 << 4
+    case haswild           = 0b0000_0010_0000 //1 << 5
+    case allowspace        = 0b0000_0100_0000 //1 << 6
+    case icase             = 0b0000_1000_0000 //1 << 7
+    case match_all         = 0b0001_0000_0000 //1 << 8
+    case allowneg          = 0b0010_0000_0000 //1 << 9
+    case allowmacro        = 0b0100_0000_0000 //1 << 10
+}
+
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.negative")
+public var GIT_ATTR_FNMATCH_NEGATIVE: git_attr_fnmatch_flags { fatalError() }
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.directory")
+public var GIT_ATTR_FNMATCH_DIRECTORY: git_attr_fnmatch_flags { fatalError() }
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.fullpath")
+public var GIT_ATTR_FNMATCH_FULLPATH: git_attr_fnmatch_flags { fatalError() }
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.macro")
+public var GIT_ATTR_FNMATCH_MACRO: git_attr_fnmatch_flags { fatalError() }
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.ignore")
+public var GIT_ATTR_FNMATCH_IGNORE: git_attr_fnmatch_flags { fatalError() }
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.haswild")
+public var GIT_ATTR_FNMATCH_HASWILD: git_attr_fnmatch_flags { fatalError() }
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.allowspace")
+public var GIT_ATTR_FNMATCH_ALLOWSPACE: git_attr_fnmatch_flags { fatalError() }
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.icase")
+public var GIT_ATTR_FNMATCH_ICASE: git_attr_fnmatch_flags { fatalError() }
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.match_all")
+public var GIT_ATTR_FNMATCH_MATCH_ALL: git_attr_fnmatch_flags { fatalError() }
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.allowneg")
+public var GIT_ATTR_FNMATCH_ALLOWNEG: git_attr_fnmatch_flags { fatalError() }
+@available(*, unavailable, renamed: "git_attr_fnmatch_flags.allowmacro")
+public var GIT_ATTR_FNMATCH_ALLOWMACRO: git_attr_fnmatch_flags { fatalError() }
+
+public extension git_attr_fnmatch_flags {
+    static var GIT_ATTR_FNMATCH__INCOMING: Self { [.allowspace, .allowneg, .allowmacro] }
+}
 
 
 
@@ -135,6 +183,70 @@ throws(GitError) -> [String]?
 
 
 
+//extern int git_attr_fnmatch__parse(
+//    git_attr_fnmatch *spec,
+//    git_pool *pool,
+//    const char *source,
+//    const char **base);
+public func git_attr_fnmatch__parse(spec: git_attr_fnmatch, pool: git_pool, source: String?, base: inout String?) throws(GitError) {
+    TODO
+}
+
+
+
+public func git_attr_file__parse_buffer(repo: Repository, attrs: inout git_attr_file, data: String, allow_macros: Bool) async throws(GitError) {
+    var scan: String? = data
+    var context: String? = nil
+    
+    
+    func out(error: GitError?) throws(GitError) {
+        if let error { throw error }
+    }
+    
+    
+    /* If subdir file path, convert context for file paths */
+    if let entry = attrs.entry,
+       case .notRooted = git_fs_path_root(entry.path),
+       case .orderedSame = git__suffixcmp(str: entry.path, suffix: "/" + GIT_ATTR_FILE)
+    {
+        context = entry.path
+    }
+    
+    try await attrs.lock.run { () throws(GitError) in
+        while TODO {
+            var rule = git_attr_rule(match: .init(flags: [.allowneg, .allowmacro]), assigns: [])
+            
+            /* Parse the next "pattern attr attr attr" line */
+            do {
+                try git_attr_fnmatch__parse(spec: rule.match, pool: attrs.pool, source: context, base: &scan)
+                try git_attr_assignment__parse(repo: repo, pool: attrs.pool, assigns: rule.assigns, scan: &scan)
+            }
+            catch let error as GitError { // `as` here really shouldn't be required but the typed-throws in Swift is halfassed
+                guard error.code == .objectNotFound else {
+                    throw error
+                }
+            }
+            catch {}
+            
+            if rule.match.flags.contains(.macro) {
+                /* TODO: warning if macro found in file below repo root */
+                guard allow_macros else { continue }
+                try throwOnlyForErrorsWithCodesButNotKinds { () throws(_) in
+                    try git_attr_cache__insert_macro(repo: repo, macro: rule)
+                }
+            }
+            else {
+                try throwOnlyForErrorsWithCodesButNotKinds { () throws(_) in
+                    try attrs.rules.insert(.left(rule))
+                }
+            }
+        }
+    }
+}
+
+
+
+
 public func git_attr_file__name_hash(for name: String) throws(GitError) -> UInt32 {
     var h: UInt32 = 5381
     
@@ -169,6 +281,23 @@ public extension git_attr_file {
             }
         }
     }
+}
+
+
+
+//extern int git_attr_assignment__parse(
+//    git_repository *repo, /* needed to expand macros */
+//    git_pool *pool,
+//    git_vector *assigns,
+//    const char **scan);
+
+public func git_attr_assignment__parse(
+    repo: Repository,
+    pool: Pool,
+    assigns: SelfSortingArray<git_attr_assignment>,
+    scan: inout String?) throws(GitError)
+{
+    TODO()
 }
 
 

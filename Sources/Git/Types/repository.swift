@@ -18,7 +18,7 @@ public struct Repository: AnyStructProtocol {
     public var odb: ObjectDatabase
     public var refdb: ReferenceDatabase
     public var config: Config?
-    public var index: Index
+    public var index: Index?
     
     public var objects: Cache
     public weak var attrcache: AttributeCache?

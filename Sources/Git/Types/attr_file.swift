@@ -46,10 +46,18 @@ public struct git_attr_file_source: AnyStructProtocol {
 /// FileName Matching
 public struct git_attr_fnmatch: AnyStructProtocol {
     public var pattern: String
-    public var length: size_t
+    public var length: Int
     public var containing_dir: String
-    public var containing_dir_length: size_t
-    public var flags: CUnsignedInt
+    public var containing_dir_length: Int
+    public var flags: git_attr_fnmatch_flags
+}
+
+
+
+public extension git_attr_fnmatch {
+    init(flags: git_attr_fnmatch_flags) {
+        self.init(pattern: "", length: 0, containing_dir: "", containing_dir_length: 0, flags: flags)
+    }
 }
 
 
@@ -91,7 +99,7 @@ public struct git_attr_file_entry: AnyStructProtocol {
 public struct git_attr_file: AnyStructProtocol {
     public var rc: RefCount
     public var lock: Mutex
-    public var entry: git_attr_file_entry
+    public var entry: git_attr_file_entry?
     public var source: git_attr_file_source
     public var rules: SelfSortingArray<Either<git_attr_rule, git_attr_fnmatch>>
     public var pool: Pool

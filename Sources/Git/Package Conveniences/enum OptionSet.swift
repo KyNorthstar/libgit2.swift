@@ -20,7 +20,9 @@ import Foundation
 public protocol AutoOptionSet: RawRepresentable, OptionSet, CaseIterable, AnyEnumProtocol
 where RawValue: FixedWidthInteger, Element == Self
 {
-    /// This represents an empty `OptionSet` of this type. This _must_ be  pre-calculated value. This _must never_ use array literal initialization nor `.init(rawVlue:)`, or a stack overflow will occur
+    /// This represents an empty `OptionSet` of this type.
+    ///
+    /// - Attention: To implementers: This _must_ be a pre-calculated value, _never_ a computed variable. This _must never_ use array literal initialization nor `.init(rawValue:)`, or a stack overflow will occur
     static var __empty: Self { get }
 }
 

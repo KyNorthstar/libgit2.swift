@@ -130,6 +130,8 @@ public enum PathRoot: AnyEnumProtocol {
     case rooted(offset: RawValue)
     
     /// The path has no root
+    ///
+    /// The C version of this used `-1` to represent this value
     case notRooted
 }
 

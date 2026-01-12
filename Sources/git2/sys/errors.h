@@ -17,8 +17,7 @@ GIT_BEGIN_DECL
  */
 GIT_EXTERN(void) git_error_clear(void);
 
-/**
- * Set the error message string for this thread, using `printf`-style
+/**6 * Set the error message string for this thread, using `printf`-style
  * formatting.
  *
  * This function is public so that custom ODB backends and the like can

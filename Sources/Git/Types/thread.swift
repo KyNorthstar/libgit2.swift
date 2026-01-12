@@ -68,6 +68,11 @@ public actor Mutex: AnyActorProtocol {
     func run<Return, E: Error>(_ block: () throws(E) -> Return) throws(E) -> Return {
         try block()
     }
+    
+    
+    func run<Return>(_ block: () throws(GitError) -> Return) throws(GitError) -> Return {
+        try block()
+    }
 }
 
 

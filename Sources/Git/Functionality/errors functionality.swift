@@ -173,3 +173,6 @@ public func git_error_global_init() -> CInt { fatalError() }
 
 @available(*, unavailable, renamed: "GitError.outOfMemory")
 public var oom_error: git_error { fatalError() }
+
+@available(*, unavailable, message: "This is unnecessary in Swift. Use `try?` instead.")
+public func git_clear_error() { fatalError() }

@@ -62,9 +62,9 @@ public enum git_attr_check: CUnsignedInt, AnyEnumProtocol, AutoOptionSet {
      * use index only for creating archives or for a bare repo (if an
      * index has been specified for the bare repo).
      */
-    case GIT_ATTR_CHECK_FILE_THEN_INDEX = 0
-    case GIT_ATTR_CHECK_INDEX_THEN_FILE = 1
-    case GIT_ATTR_CHECK_INDEX_ONLY      = 2
+    case GIT_ATTR_CHECK_FILE_THEN_INDEX = 0 // 0b00
+    case GIT_ATTR_CHECK_INDEX_THEN_FILE = 1 // 0b01
+    case GIT_ATTR_CHECK_INDEX_ONLY      = 2 // 0b10
     
     
     /**

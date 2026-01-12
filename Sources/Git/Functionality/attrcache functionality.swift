@@ -78,7 +78,7 @@ throws(GitError)
 
 public func git_attr_cache__get(
     repo: Repository,
-    attr_session: git_attr_session,
+    attr_session: git_attr_session?,
     source: git_attr_file_source,
     parser: git_attr_file_parser,
     allow_macros: Bool)
@@ -125,4 +125,15 @@ throws(GitError) -> git_attr_file {
     }
 
     return file
+}
+
+
+
+//extern int git_attr_cache__insert_macro(
+//    git_repository *repo, git_attr_rule *macro);
+public func git_attr_cache__insert_macro(
+    repo: Repository,
+    macro: git_attr_rule)
+throws(GitError) {
+    TODO
 }
